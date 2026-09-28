@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drive Mode TMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1720; --panel:#16212E; --panel2:#1C2A3A; --border:#28394C;
+  --text:#E9EEF4; --dim:#8FA3B8; --accent:#FF6A1A; --accent2:#3EA36E;
+  --warn:#F0A93B; --danger:#E5555C; --radius:10px; color-scheme:dark;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;}
+[hidden]{display:none !important;}
+html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+body{
+  margin:0; height:100%; background:var(--bg); color:var(--text);
+  font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.logo,.stat-num{font-family:'Big Shoulders Display',system-ui,sans-serif;}
+::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* ---------- LOGIN ---------- */
+#login{min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px;
+  background:radial-gradient(1200px 600px at 15% -10%, #1a2b3d 0%, var(--bg) 60%);}
+.login-card{width:100%; max-width:460px; background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:40px 36px;}
+.login-logo{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+.login-logo .mark{width:14px;height:34px;background:var(--accent);border-radius:3px; transform:skewX(-12deg);}
+.login-logo span{font-size:30px; font-weight:800; letter-spacing:0.5px;}
+.login-sub{color:var(--dim); font-size:14px; margin-bottom:28px;}
+.role-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.role-btn{background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:var(--radius);
+  padding:16px 14px; text-align:left; cursor:pointer; transition:.15s border-color,.15s background;}
+.role-btn:hover{border-color:var(--accent); background:#20304285;}
+.role-btn b{display:block; font-size:14px; margin-bottom:3px;}
+.role-btn span{font-size:12px; color:var(--dim);}
+.login-foot{margin-top:26px; font-size:12px; color:var(--dim); line-height:1.6;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none; min-height:100dvh;}
+.shell{display:flex; min-height:100dvh;}
+.sidebar{width:230px; flex:none; background:var(--panel); border-right:1px solid var(--border);
+  padding:22px 14px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100dvh; overflow-y:auto;}
+.sidebar .logo{display:flex; align-items:center; gap:8px; padding:0 8px 20px; font-size:20px; font-weight:800;}
+.sidebar .logo .mark{width:10px;height:22px;background:var(--accent);border-radius:2px; transform:skewX(-12deg);}
+.nav-item{padding:11px 12px; border-radius:8px; color:var(--dim); font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; border:1px solid transparent;}
+.nav-item:hover{background:var(--panel2); color:var(--text);}
+.nav-item.active{background:#2A2013; color:var(--accent); border-color:#4A3220;}
+.nav-item.locked{opacity:.4; cursor:default;}
+.nav-item.locked:hover{background:none; color:var(--dim);}
+.sidebar-foot{margin-top:auto; padding:12px 8px 0; border-top:1px solid var(--border);}
+.who{font-size:13px; font-weight:600;}
+.who-role{font-size:11px; color:var(--dim); text-transform:capitalize; margin-bottom:10px;}
+.logout-btn{width:100%; padding:9px; background:transparent; border:1px solid var(--border); color:var(--dim); border-radius:8px; cursor:pointer; font-size:13px;}
+.logout-btn:hover{color:var(--text); border-color:var(--accent);}
+
+.main{flex:1; min-width:0; padding:26px 30px 60px;}
+.topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;}
+.topbar h1{font-size:28px; margin:0; font-weight:700;}
+.topbar .desc{color:var(--dim); font-size:13px; margin-top:2px;}
+.btn{background:var(--accent); color:#1a0d02; border:none; padding:10px 18px; border-radius:8px; font-weight:700; font-size:13.5px; cursor:pointer; font-family:'Inter',sans-serif;}
+.btn:hover{filter:brightness(1.08);}
+.btn.secondary{background:var(--panel2); color:var(--text); border:1px solid var(--border);}
+.btn.small{padding:6px 12px; font-size:12.5px;}
+.btn.danger{background:transparent; color:var(--danger); border:1px solid var(--danger);}
+.btn.danger:hover{background:#3B1E1E; filter:none;}
+
+/* ---------- DASHBOARD ---------- */
+.kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px;}
+.kpi{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px;}
+.kpi .lbl{font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em;}
+.stat-num{font-size:30px; font-weight:700; margin:6px 0 2px;}
+.kpi .sub{font-size:12px; color:var(--dim);}
+.kpi.accent .stat-num{color:var(--accent);}
+.kpi.good .stat-num{color:var(--accent2);}
+.kpi.warn .stat-num{color:var(--warn);}
+.kpi.bad .stat-num{color:var(--danger);}
+
+.dash-cols{display:grid; grid-template-columns:1.3fr 1fr; gap:16px;}
+.panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px;}
+.panel h3{margin:0 0 14px; font-size:16px; font-weight:700;}
+.row-item{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:13.5px;}
+.row-item:last-child{border-bottom:none;}
+.row-item .t1{font-weight:600;}
+.row-item .t2{color:var(--dim); font-size:12px;}
+.pill{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap;}
+.alert-item{display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;}
+.alert-item:last-child{border-bottom:none;}
+.alert-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none;}
+.alert-dot.bad{background:var(--danger);} .alert-dot.warn{background:var(--warn);}
+.empty{color:var(--dim); font-size:13px; padding:8px 0;}
+
+/* ---------- DISPATCH TABLE ---------- */
+.filters{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.filters select,.filters input{background:var(--panel2); border:1px solid var(--border); color:var(--text); padding:8px 10px; border-radius:8px; font-size:13px; font-family:inherit;}
+.table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel);}
+table{width:100%; border-collapse:collapse; min-width:920px; font-size:13px;}
+th{text-align:left; padding:12px 14px; color:var(--dim); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--border); white-space:nowrap;}
+td{padding:12px 14px; border-bottom:1px solid var(--border); white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+.pr-sheet th,.pr-sheet td{padding:9px 8px; vertical-align:middle;}
+.pr-sheet tbody tr:hover{background:transparent; cursor:default;}
+.pr-sheet tfoot td{border-top:1px solid var(--border); font-weight:700; border-bottom:none;}
+.pr-in{background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:7px; padding:6px 7px; font-size:12.5px; font-family:inherit;}
+.pr-in:disabled{opacity:.4;}
+tbody tr:hover{background:var(--panel2); cursor:pointer;}
+.mono{font-family:ui-monospace,monospace; color:var(--dim); font-size:12px;}
+
+/* status pill colors */
+.st-available{background:#28394C;color:#B9C9DA;}
+.st-assigned{background:#2A3B57;color:#8FB4F0;}
+.st-dispatched{background:#33325A;color:#B6A9F5;}
+.st-at_pickup{background:#4A3A1E;color:#F0C878;}
+.st-loaded{background:#4A3A1E;color:#F0C878;}
+.st-in_transit{background:#3A2E12;color:var(--accent);}
+.st-at_delivery{background:#1E3B33;color:#6FD3AE;}
+.st-delivered{background:#1B3B27;color:var(--accent2);}
+.st-documents_pending{background:#4A2A1E;color:#F09B78;}
+.st-invoiced{background:#2A2E4A;color:#9AA6F0;}
+.st-paid{background:#173A24;color:#5FE39A;}
+.st-cancelled{background:#3B1E1E;color:var(--danger);}
+
+/* ---------- MODAL ---------- */
+.overlay{display:none; position:fixed; inset:0; background:rgba(6,10,15,.72); z-index:50; align-items:flex-start; justify-content:center; padding:30px 16px; overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:var(--panel); border:1px solid var(--border); border-radius:14px; width:100%; max-width:720px; padding:26px 28px 30px; margin-bottom:40px;}
+.modal h2{margin:0 0 4px; font-size:22px;}
+.modal .modal-sub{color:var(--dim); font-size:13px; margin-bottom:20px;}
+.form-grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px 14px;}
+.form-grid > *{min-width:0;}
+.modal{min-width:0;}
+.form-grid .span2{grid-column:1/-1;}
+.field label{display:block; font-size:12px; color:var(--dim); margin-bottom:5px; font-weight:600;}
+.field input[type=date], .field input[type=datetime-local]{-webkit-appearance:none; appearance:none; min-height:40px; text-align:left;}
+.field input,.field select,.field textarea{min-width:0; max-width:100%; width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text); padding:9px 11px; border-radius:8px; font-size:13.5px; font-family:inherit;}
+.field textarea{resize:vertical; min-height:60px;}
+.section-divider{grid-column:1/-1; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); border-top:1px solid var(--border); padding-top:14px; margin-top:2px;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:22px;}
+.file-row{display:flex; align-items:center; gap:8px;}
+.file-row input[type=file]{font-size:11px;}
+.file-chip{font-size:11px; color:var(--accent2); background:#173A24; padding:3px 8px; border-radius:6px; white-space:nowrap;}
+.close-x{position:absolute; top:20px; right:20px; background:none; border:none; color:var(--dim); font-size:20px; cursor:pointer;}
+.modal-wrap{position:relative;}
+
+/* driver/customer simple views */
+.card-list{display:grid; gap:12px;}
+.load-card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px;}
+.load-card .lc-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.load-card .lc-route{font-size:14px; font-weight:600; margin-bottom:2px;}
+.load-card .lc-meta{font-size:12px; color:var(--dim); display:flex; gap:14px; flex-wrap:wrap; margin-top:8px;}
+.locked-msg{color:var(--dim); font-size:14px; background:var(--panel); border:1px dashed var(--border); border-radius:var(--radius); padding:26px; text-align:center;}
+
+#toastBox{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:100; display:flex; flex-direction:column; gap:8px; width:min(460px, calc(100% - 32px));}
+.toast{background:var(--panel2); border:1px solid var(--border); border-left:4px solid var(--danger); color:var(--text); padding:12px 14px; border-radius:10px; font-size:13.5px; box-shadow:0 10px 30px rgba(0,0,0,.45); transition:opacity .3s;}
+.toast.ok{border-left-color:var(--accent2);}
+.toast.out{opacity:0;}
+.kpi-grid.kpi3{grid-template-columns:repeat(3,1fr);}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+/* connections */
+.conn-strip{display:flex; flex-wrap:wrap; gap:8px; margin:-8px 0 16px;}
+.conn-section{font-size:15px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin:6px 0 10px;}
+.conn-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; margin-bottom:18px;}
+.conn-card{display:flex; flex-direction:column; gap:10px;}
+.conn-head{display:flex; flex-wrap:wrap; align-items:center; gap:8px;}
+.conn-head h3{margin-right:auto !important;}
+.conn-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:auto;}
+.conn-note{font-size:13px; color:var(--dim); line-height:1.55; max-width:70ch;}
+.conn-note p{margin:0 0 8px;} .conn-note b{color:var(--text);}
+a.mono{color:var(--accent); text-decoration:none;}
+/* text driver */
+.chip-row{display:flex; flex-wrap:wrap; gap:6px;}
+.chip{background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:20px; padding:6px 12px; font-size:12.5px; cursor:pointer; font-family:inherit;}
+.chip[aria-pressed="true"]{border-color:var(--accent); color:var(--accent); background:#2A2013;}
+.sms-to{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:6px;}
+.sms-num{font-family:ui-monospace,monospace; font-size:15px; color:var(--text); user-select:all; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:5px 10px;}
+.sms-note{font-size:12.5px; color:var(--dim); margin-top:14px; line-height:1.5;}
+a.btn{text-decoration:none; display:inline-flex; align-items:center;}
+.txt-btn{margin-left:6px; padding:3px 9px !important; font-size:11.5px !important;}
+/* driver documents */
+.doc-block{margin-top:14px; padding-top:14px; border-top:1px solid var(--border); display:grid; gap:10px;}
+.doc-actions{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+.doc-actions select{background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit;}
+.file-btn{position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:6px; cursor:pointer;}
+.file-btn input{position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer;}
+.file-btn:focus-within{outline:2px solid var(--accent); outline-offset:2px;}
+.doc-checklist{display:flex; flex-wrap:wrap; gap:6px; font-size:12px;}
+.doc-chk{padding:3px 9px; border-radius:20px; border:1px solid var(--border); color:var(--dim);}
+.doc-chk.ok{background:#173A24; color:#5FE39A; border-color:#1f5a36;}
+.thumbs{display:flex; flex-wrap:wrap; gap:8px;}
+.thumb{width:78px; border:1px solid var(--border); border-radius:8px; background:var(--panel2); overflow:hidden; cursor:pointer; padding:0; color:var(--text); font:inherit; text-align:left;}
+.thumb .ti{width:100%; height:62px; object-fit:cover; display:block; background:#0b121a;}
+.thumb .tp{height:62px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:var(--warn); background:#0b121a;}
+.thumb .tl{display:block; font-size:10.5px; padding:4px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--dim); text-transform:uppercase; letter-spacing:.03em;}
+.thumb:focus-visible{outline:2px solid var(--accent);}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+.viewer-img{width:100%; max-height:70vh; object-fit:contain; background:#0b121a; border-radius:10px; display:block;}
+.uploading{font-size:12.5px; color:var(--warn);}
+/* ---------- MOBILE ---------- */
+.hamburger{display:none;}
+@media (max-width:880px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .dash-cols{grid-template-columns:1fr;}
+  .shell{flex-direction:column;}
+  .sidebar{width:100%; height:auto; position:sticky; top:0; z-index:30; flex-direction:row; align-items:center; padding:12px 14px; overflow-x:auto;}
+  .sidebar .logo{padding:0 12px 0 0;}
+  .nav-item{white-space:nowrap;}
+  .sidebar{top:env(safe-area-inset-top,0px);}
+  #navItems{display:flex; gap:4px; flex:1; min-width:0; overflow-x:auto;}
+  .sidebar .logo span, .sidebar .logo{white-space:nowrap;}
+  .sidebar-foot{margin:0 0 0 8px; padding:0; border:none; flex:none;}
+  .sidebar-foot .who,.sidebar-foot .who-role{display:none;}
+  .logout-btn{width:auto; padding:8px 12px; white-space:nowrap;}
+  .kpi-grid.kpi3{grid-template-columns:1fr 1fr;}
+  .topbar h1{font-size:24px;}
+  .modal{padding:22px 16px 24px;}
+  .login-card{padding:30px 20px;}
+  .main{padding:18px 16px 50px;}
+  .role-grid{grid-template-columns:1fr;}
+  /* Run Payroll sheet: one card per load on phones */
+  #pr_loads .table-wrap{border:none; background:none; overflow:visible;}
+  .pr-sheet{min-width:0 !important;}
+  .pr-sheet, .pr-sheet tbody, .pr-sheet tfoot, .pr-sheet tr, .pr-sheet td{display:block; width:100%;}
+  .pr-sheet thead{display:none;}
+  .pr-sheet tbody tr, .pr-sheet tfoot tr{background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:6px 12px; margin-bottom:10px;}
+  .pr-sheet td{display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:12px; row-gap:2px; align-items:center; justify-items:end; padding:7px 0 !important; border-bottom:1px solid var(--border); white-space:normal; text-align:right; min-width:0 !important;}
+  .pr-sheet td::before{grid-column:1; grid-row:1 / span 3; justify-self:start;}
+  .pr-sheet td > *{grid-column:2;}
+  .pr-sheet td > div, .pr-sheet td .mono{text-align:right;}
+  .pr-sheet td::before{content:attr(data-label); color:var(--dim); font-size:12px; font-weight:600; text-align:left;}
+  .pr-sheet td:last-child{border-bottom:none;}
+  .pr-sheet td.pr-route{display:block; text-align:left;} .pr-sheet td.pr-route::before{display:block; margin-bottom:3px;}
+  .pr-sheet td.pr-route, .pr-sheet td.pr-route .mono{text-align:left !important;}
+  .pr-sheet td.pr-paycell b{font-size:16px; color:var(--accent);}
+  .pr-sheet td.pr-empty{display:none;}
+  .pr-sheet td.pr-tot-title{font-weight:700; display:block; text-align:left;} .pr-sheet td.pr-tot-title::before{display:none;}
+  #pr_splitAllWrap span{margin-left:0 !important; flex-wrap:wrap;}
+  .form-grid{grid-template-columns:minmax(0,1fr);}
+}
+
+/* ---------- PRINT: pay stub only ---------- */
+@media print{
+  @page{margin:16mm;}
+  html,body{height:auto; background:#fff !important;}
+  body *{visibility:hidden;}
+  #app, #login, #loadOverlay, #entityOverlay, #payrollOverlay{display:none !important;}
+  #stubOverlay, #stubOverlay *{visibility:visible;}
+  #stubOverlay{position:absolute; top:0; left:0; right:0; display:block !important; background:#fff !important; padding:0; overflow:visible;}
+  #stubOverlay .modal{max-width:none; border:none; border-radius:0; padding:0; margin:0; background:#fff !important;}
+  #stubOverlay *{color:#111 !important; border-color:#ccc !important;}
+  #stubOverlay .pill{border:1px solid #999 !important; background:#fff !important;}
+  #stubOverlay .modal-actions, #stubOverlay .close-x{display:none !important;}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login">
+  <div class="login-card">
+    <div class="login-logo"><div class="mark"></div><span>Drive Mode TMS</span></div>
+    <div class="login-sub">DriveModeTMS.com — sign in to your account</div>
+
+    <div class="field" style="margin-bottom:12px;"><label>Email</label><input id="loginEmail" type="email" placeholder="you@drivemodetms.com" onkeydown="if(event.key==='Enter')attemptLogin()"></div>
+    <div class="field" style="margin-bottom:6px;"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')attemptLogin()"></div>
+    <div id="loginError" style="color:var(--danger);font-size:12.5px;min-height:16px;margin:2px 0 12px;"></div>
+    <button class="btn" style="width:100%;" onclick="attemptLogin()">Sign In</button>
+
+    <div class="login-foot" style="margin-top:24px;margin-bottom:10px;">Demo accounts — click one to autofill, then Sign In:</div>
+    <div class="role-grid" id="demoAccounts"></div>
+    <div class="login-foot">Prototype build — credentials are checked against the user list stored in this browser. Production uses hashed passwords, MFA and a real auth provider (see the users table in the schema).</div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <div class="shell">
+    <div class="sidebar">
+      <div class="logo"><div class="mark"></div>Drive Mode</div>
+      <div id="navItems"></div>
+      <div class="sidebar-foot">
+        <div class="who" id="whoName"></div>
+        <div class="who-role" id="whoRole"></div>
+        <button class="logout-btn" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+    <div class="main" id="main"></div>
+  </div>
+</div>
+
+<!-- ================= LOAD MODAL ================= -->
+<div class="overlay" id="loadOverlay">
+  <div class="modal modal-wrap">
+    <button class="close-x" onclick="closeModal()">✕</button>
+    <h2 id="modalTitle">New Load</h2>
+    <div class="modal-sub" id="modalSub">Enter load details, assign resources, and set status.</div>
+    <div class="form-grid" id="formGrid"></div>
+    <div class="modal-actions">
+      <button class="btn danger" id="deleteLoadBtn" style="margin-right:auto;" onclick="deleteLoad()" hidden>Delete Load</button>
+      <button class="btn secondary" id="textLoadDriverBtn" onclick="openTextDriver(document.getElementById('f_driverId').value, editingLoadId)" hidden>Text Driver</button>
+      <button class="btn secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="saveLoad()">Save Load</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= GENERIC ENTITY MODAL ================= -->
+<div class="overlay" id="entityOverlay">
+  <div class="modal modal-wrap">
+    <button class="close-x" onclick="closeEntityModal()">✕</button>
+    <h2 id="entityModalTitle">Edit</h2>
+    <div class="modal-sub" id="entityModalSub"></div>
+    <div class="form-grid" id="entityFormGrid"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeEntityModal()">Cancel</button>
+      <button class="btn" onclick="saveEntityModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= RUN PAYROLL MODAL ================= -->
+<div class="overlay" id="payrollOverlay">
+  <div class="modal modal-wrap" style="max-width:1040px;">
+    <button class="close-x" onclick="closePayrollModal()">✕</button>
+    <h2>Run Payroll</h2>
+    <div class="modal-sub">Choose a driver and pay period, tick the loads to pay, and check the totals before saving.</div>
+    <div class="form-grid">
+      <div class="field span2"><label>Driver</label><select id="pr_driver" onchange="prDriverChanged()"></select></div>
+      <div class="field"><label>Period Start</label><input type="date" id="pr_start" onchange="prRecalc()"></div>
+      <div class="field"><label>Period End</label><input type="date" id="pr_end" onchange="prRecalc()"></div>
+      <div class="section-divider">Loads to pay</div>
+      <div class="span2" id="pr_splitAllWrap" style="display:none;">
+        <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;font-size:13px;color:var(--dim);margin-bottom:10px;">
+          <span><b style="color:var(--text)">Split settlement:</b> Owner-Op keeps 100% minus 12% dispatch, fuel and insurance. 50/50 splits the net after dispatch fee and fuel. 30/70 splits the full amount with no deductions.</span>
+          <span style="display:flex;align-items:center;gap:8px;margin-left:auto;">Apply split to all loads
+            <select id="pr_splitAll" onchange="prApplySplitAll()" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;">
+              <option value="50_50">50/50 — after dispatch fee &amp; fuel</option>
+              <option value="30_70">30/70 — driver 30 / company 70, no deductions</option>
+              <option value="">No split — driver's pay rate</option>
+            </select></span>
+        </div>
+      </div>
+      <div class="span2" id="pr_loads"></div>
+      <div class="section-divider">Adjustments</div>
+      <div class="field"><label>Bonus / Reimbursements ($)</label><input type="number" id="pr_bonus" value="0" min="0" oninput="prRecalc()"></div>
+      <div class="field"><label>Other Deductions ($) — advances, escrow, fuel card</label><input type="number" id="pr_deductions" value="0" min="0" oninput="prRecalc()"></div>
+      <div class="field span2" id="pr_insWrap" hidden><label>Insurance ($) — owner-operator deduction <span id="pr_insHint" style="font-weight:500;"></span></label><input type="number" id="pr_insurance" value="0" min="0" oninput="prInsDirty=true; prRecalc()"></div>
+      <div class="field span2"><label>Notes (shown on pay stub)</label><input id="pr_notes" placeholder="e.g. $200 fuel advance repaid"></div>
+      <div class="section-divider">Summary</div>
+      <div class="span2" id="pr_summary"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closePayrollModal()">Cancel</button>
+      <button class="btn" onclick="savePayroll()">Create Settlement</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TEXT DRIVER ================= -->
+<div class="overlay" id="smsOverlay" style="z-index:60;">
+  <div class="modal modal-wrap" style="max-width:560px;">
+    <button class="close-x" onclick="closeTextDriver()" aria-label="Close">✕</button>
+    <h2 id="smsTitle">Text Driver</h2>
+    <div class="modal-sub" id="smsSub"></div>
+    <div class="form-grid">
+      <div class="field span2"><label for="smsLoad">About load</label><select id="smsLoad" onchange="smsApplyTemplate()"></select></div>
+      <div class="span2"><div class="chip-row" id="smsTemplates"></div></div>
+      <div class="field span2"><label for="smsBody">Message</label><textarea id="smsBody" rows="6" oninput="smsUpdateLink()"></textarea>
+        <div class="mono" id="smsCount" style="margin-top:4px;"></div></div>
+    </div>
+    <div class="sms-note">Open in Messages starts a text from your phone's texting app with this message filled in. You still tap Send there. If nothing opens, copy the number and message instead.</div>
+    <div class="modal-actions" style="flex-wrap:wrap;">
+      <button class="btn secondary" onclick="copyText(document.getElementById('smsBody').value,'Message copied.')">Copy Message</button>
+      <a class="btn" id="smsOpen" href="#" rel="noopener">Open in Messages</a>
+    </div>
+  </div>
+</div>
+
+<!-- ================= FILE VIEWER ================= -->
+<div class="overlay" id="fileOverlay" style="z-index:65;">
+  <div class="modal modal-wrap" style="max-width:760px;">
+    <button class="close-x" onclick="closeFileViewer()" aria-label="Close">✕</button>
+    <h2 id="fvTitle" style="font-size:20px;padding-right:30px;"></h2>
+    <div class="modal-sub" id="fvSub"></div>
+    <div id="fvBody"></div>
+    <div class="modal-actions">
+      <button class="btn danger" id="fvDelete" style="margin-right:auto;">Remove File</button>
+      <button class="btn secondary" onclick="closeFileViewer()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CONFIRM ================= -->
+<div class="overlay" id="confirmOverlay" style="z-index:70;">
+  <div class="modal" style="max-width:420px;margin-top:12vh;">
+    <h2 style="font-size:20px;">Are you sure?</h2>
+    <div class="modal-sub" id="confirmMsg" style="margin-bottom:0;"></div>
+    <div class="modal-actions"><button class="btn secondary" onclick="closeConfirm()">Cancel</button><button class="btn" id="confirmYes">Confirm</button></div>
+  </div>
+</div>
+
+<!-- ================= PAY STUB MODAL ================= -->
+<div class="overlay" id="stubOverlay">
+  <div class="modal modal-wrap" style="max-width:780px;">
+    <button class="close-x" onclick="closeStub()">✕</button>
+    <div id="stubBody"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeStub()">Close</button>
+      <button class="btn" onclick="window.print()">Print</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DRIVE MODE TMS — PROTOTYPE
+   Persistence: localStorage (per-browser demo only)
+   ============================================================ */
+const LS_KEY = 'dmtms_data_v2';
+const DEFAULT_DISPATCH_FEE_PCT = 12; // default dispatch fee on 1099 owner-operator settlements, % of load amount
+// 1099 owner-operator split of a load's net (amount − dispatch fee − fuel)
+// deduct: whether dispatch fee and fuel come off the load before splitting (30/70 is taken from the full amount)
+const SPLITS = {'50_50':{label:'50/50', company:50, driver:50, deduct:true}, '30_70':{label:'30/70', company:70, driver:30, deduct:false},
+  // Owner-operator: keeps 100% of the load minus 12% dispatch fee and fuel; weekly insurance comes off the settlement
+  'oo':{label:'Owner-Op', company:0, driver:100, deduct:true, ownerOnly:true}};
+const SEED_LOAD_NUMBERS = {'L-1001':'APX-448120','L-1002':'APX-448377','L-1003':'CF-20931','L-1004':'APX-447702','L-1005':'APX-446915','L-1006':'HP-7781','L-1007':'APX-448512','L-1000':'TQL-771204','L-1008':'HP-7802'};
+function normalizeLoads(data){
+  (data.loads||[]).forEach(l=>{ if(l.loadNumber===undefined) l.loadNumber = SEED_LOAD_NUMBERS[l.id] || ''; });
+}
+const STATUSES = ['available','assigned','dispatched','at_pickup','loaded','in_transit','at_delivery','delivered','documents_pending','invoiced','paid'];
+const STATUS_LABEL = {available:'Available',assigned:'Assigned',dispatched:'Dispatched',at_pickup:'At Pickup',loaded:'Loaded',in_transit:'In Transit',at_delivery:'At Delivery',delivered:'Delivered',documents_pending:'Documents Pending',invoiced:'Invoiced',paid:'Paid',cancelled:'Cancelled'};
+const ROLES = [
+  {id:'owner_admin', label:'Owner / Admin', desc:'Full visibility across all modules'},
+  {id:'dispatcher', label:'Dispatcher', desc:'Manage loads & assignments'},
+  {id:'accounting', label:'Accounting', desc:'Revenue, invoices & payments'},
+  {id:'safety', label:'Safety', desc:'Compliance & driver alerts'},
+  {id:'driver', label:'Driver', desc:'Driver portal preview'},
+  {id:'customer', label:'Customer', desc:'Customer portal preview'},
+];
+// Used only for the autofill buttons on the login screen. Sign-in itself checks DB.users.
+const DEMO_USERS = [
+  {id:'u1', name:'Dana Whitfield', email:'admin@drivemodetms.com', password:'Admin123!', role:'owner_admin'},
+  {id:'u2', name:'Priya Nandan', email:'dispatch@drivemodetms.com', password:'Dispatch123!', role:'dispatcher'},
+  {id:'u3', name:'Carlos Medina', email:'accounting@drivemodetms.com', password:'Accounting123!', role:'accounting'},
+  {id:'u4', name:'Renee Falk', email:'safety@drivemodetms.com', password:'Safety123!', role:'safety'},
+  {id:'u5', name:'Marcus Reyes', email:'mreyes@drivemodetms.com', password:'Driver123!', role:'driver'},
+  {id:'u6', name:'Lena Park', email:'lena@coastalfoods.com', password:'Customer123!', role:'customer'},
+];
+
+function seedData(){
+  const today = new Date('2026-09-27T08:00:00');
+  const d = (offset,h=8) => { const t=new Date(today); t.setDate(t.getDate()+offset); t.setHours(h,0,0,0); return t.toISOString(); };
+  return {
+    drivers:[],
+    trucks:[
+      {id:'trk1', unit:'T-104', vin:'1FUJA6CV05LM12345', plate:'OH-TR4021', mileage:312840, insExp:'2027-02-01', regExp:'2027-01-15', nextInspection:'2026-11-20'},
+      {id:'trk2', unit:'T-108', vin:'1XKAD49X8ND512233', plate:'OH-TR4055', mileage:198220, insExp:'2027-05-01', regExp:'2026-10-10', nextInspection:'2026-10-02'},
+      {id:'trk3', unit:'T-112', vin:'3AKJHHDR9GSGV0091', plate:'IN-TR7712', mileage:401110, insExp:'2026-10-08', regExp:'2027-03-01', nextInspection:'2026-12-01'},
+    ],
+    trailers:[
+      {id:'tr1', unit:'DV-51', type:'Dry Van', plate:'OH-TL9012', insExp:'2027-02-01', regExp:'2027-01-15'},
+      {id:'tr2', unit:'RF-22', type:'Reefer', plate:'OH-TL9033', insExp:'2026-10-20', regExp:'2027-04-01'},
+      {id:'tr3', unit:'FB-09', type:'Flatbed', plate:'IN-TL2210', insExp:'2027-06-01', regExp:'2027-02-01'},
+    ],
+    customers:[
+      {id:'cus1', name:'Coastal Foods Inc.', type:'shipper', contact:'Lena Park', email:'lena@coastalfoods.com', phone:'(704) 555-0110', terms:'Net 30'},
+      {id:'cus2', name:'Heartland Produce', type:'shipper', contact:'Tom Rizzo', email:'tom@heartlandproduce.com', phone:'(317) 555-0166', terms:'Net 15'},
+      {id:'cus3', name:'Apex Brokerage LLC', type:'broker', contact:'Nadia Fisher', email:'nadia@apexbrokerage.com', phone:'(888) 555-0199', terms:'Quick Pay 2%'},
+    ],
+    loads:[],
+    loadBoardPostings:[],
+    loadBoardListings:[],
+    integrations:{ dat:{}, truckstop:{}, lb123:{}, rts:{}, triumph:{}, otr:{}, defaultFactoring:'fc1' },
+    factoringCompanies:[
+      {id:'fc1', name:'RTS Financial', advanceRate:97, feePct:3, reserveDays:0, active:true},
+      {id:'fc2', name:'Triumph Business Capital', advanceRate:95, feePct:2.5, reserveDays:2, active:true},
+      {id:'fc3', name:'OTR Solutions', advanceRate:97, feePct:3, reserveDays:0, active:true},
+    ],
+    factoringSubmissions:[],
+    expenses:[
+      {id:'ex3', category:'maintenance', amount:820, loadId:null, date:'2026-09-20', notes:'T-112 brake service'},
+      {id:'ex4', category:'driver_pay', amount:3200, loadId:null, date:'2026-09-22', notes:'Weekly driver settlements'},
+      {id:'ex5', category:'other', amount:140, loadId:null, date:'2026-09-24', notes:'ELD subscription'},
+    ],
+    settlements:[],
+    demoCleared:true,
+    users:[
+      {id:'u1', email:'admin@drivemodetms.com', name:'Dana Whitfield', role:'owner_admin', active:true, password:'Admin123!', driverId:null, customerId:null},
+      {id:'u2', email:'dispatch@drivemodetms.com', name:'Priya Nandan', role:'dispatcher', active:true, password:'Dispatch123!', driverId:null, customerId:null},
+      {id:'u3', email:'accounting@drivemodetms.com', name:'Carlos Medina', role:'accounting', active:true, password:'Accounting123!', driverId:null, customerId:null},
+      {id:'u4', email:'safety@drivemodetms.com', name:'Renee Falk', role:'safety', active:true, password:'Safety123!', driverId:null, customerId:null},
+      {id:'u5', email:'mreyes@drivemodetms.com', name:'Marcus Reyes', role:'driver', active:true, password:'Driver123!', driverId:null, customerId:null},
+      {id:'u6', email:'lena@coastalfoods.com', name:'Lena Park', role:'customer', active:true, password:'Customer123!', driverId:null, customerId:'cus1'},
+    ],
+  };
+}
+
+/* ---------- in-page notices (browser pop-ups are blocked when published) ---------- */
+function notify(msg, kind){
+  let box = document.getElementById('toastBox');
+  if(!box){ box = document.createElement('div'); box.id='toastBox'; document.body.appendChild(box); }
+  const t = document.createElement('div'); t.className = 'toast ' + (kind||'error'); t.setAttribute('role','status');
+  t.textContent = msg; box.appendChild(t);
+  setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(), 300); }, kind==='ok' ? 5000 : 4000);
+}
+function askConfirm(msg, yesLabel, onYes){
+  document.getElementById('confirmMsg').textContent = msg;
+  const yes = document.getElementById('confirmYes'); yes.textContent = yesLabel || 'Confirm';
+  yes.onclick = ()=>{ closeConfirm(); onYes(); };
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+function closeConfirm(){ document.getElementById('confirmOverlay').classList.remove('open'); }
+function loadDB(){
+  const seed = seedData();
+  let raw = null; try{ raw = localStorage.getItem(LS_KEY); }catch(e){}
+  normalizeLoads(seed);
+  if(!raw){ storeSet(seed); return seed; }
+  let data;
+  try{ data = JSON.parse(raw); }catch(e){ data = null; }
+  if(!data){ storeSet(seed); return seed; }
+  // migrate: backfill any top-level sections added by later app versions
+  Object.keys(seed).forEach(k=>{ if(k!=='demoCleared' && !(k in data)) data[k] = seed[k]; });
+  // migrate: backfill new per-driver fields (classification, payType, payRate) for saves from older versions
+  if(Array.isArray(data.drivers)){
+    data.drivers.forEach(d=>{
+      const seedMatch = seed.drivers.find(sd=>sd.id===d.id) || {classification:'w2_employee', payType:'per_mile', payRate:0.55};
+      if(d.classification===undefined) d.classification = seedMatch.classification;
+      if(d.payType===undefined) d.payType = seedMatch.payType;
+      if(d.payRate===undefined) d.payRate = seedMatch.payRate;
+      // percentage drivers now pick a 50/50 or 30/70 split of the load's net
+      if(d.payType==='percentage' && !SPLITS[d.paySplit]) d.paySplit = d.payRate<=35 ? '30_70' : '50_50';
+      if(d.payType==='percentage') d.payRate = SPLITS[d.paySplit].driver; // keep the shown rate in step with the split
+      // sample owner-operator still on the old sample pay: move him to the new Owner-Op pay
+      if(d.id==='drv3' && d.payType==='per_mile' && d.payRate===0.58 && d.insuranceWeekly===undefined){ d.payType='percentage'; d.paySplit='oo'; d.payRate=100; delete d.defaultSplit; }
+      if(d.insuranceWeekly===undefined){ const exact = seed.drivers.find(sd=>sd.id===d.id); d.insuranceWeekly = (exact && exact.insuranceWeekly) || 0; }
+    });
+  }
+  // migrate: add factoring companies introduced later (e.g. OTR Solutions)
+  if(Array.isArray(data.factoringCompanies)) seed.factoringCompanies.forEach(fc=>{ if(!data.factoringCompanies.some(x=>x.id===fc.id)) data.factoringCompanies.push(fc); });
+  // one-time: remove the sample drivers and loads (and records that only belong to them); keep anything the user added
+  if(!data.demoCleared){
+    const demoDrivers = ['drv1','drv2','drv3'];
+    const demoLoads = ['L-1000','L-1001','L-1002','L-1003','L-1004','L-1005','L-1006','L-1007','L-1008'];
+    const isDemoLoad = id=>demoLoads.includes(id);
+    data.drivers = (data.drivers||[]).filter(d=>!demoDrivers.includes(d.id));
+    data.loads = (data.loads||[]).filter(l=>!isDemoLoad(l.id));
+    data.settlements = (data.settlements||[]).filter(st=>!demoDrivers.includes(st.driverId) && !st.loadIds.some(isDemoLoad));
+    data.factoringSubmissions = (data.factoringSubmissions||[]).filter(f=>!isDemoLoad(f.loadId));
+    data.loadBoardPostings = (data.loadBoardPostings||[]).filter(x=>!isDemoLoad(x.loadId));
+    data.loadBoardListings = (data.loadBoardListings||[]).filter(x=>!['ext1','ext2','ext3','ext4'].includes(x.id));
+    data.expenses = (data.expenses||[]).filter(e=>!(e.loadId && isDemoLoad(e.loadId)) && !['ex1','ex2','ex6','ex7','ex8'].includes(e.id));
+    (data.users||[]).forEach(u=>{ if(demoDrivers.includes(u.driverId)) u.driverId = null; });
+    data.demoCleared = true;
+  }
+  // migrate: backfill load number on loads saved by older versions
+  normalizeLoads(data);
+  // migrate: backfill passwords and portal links on users saved by older versions
+  if(Array.isArray(data.users)){
+    data.users.forEach(u=>{
+      const seedMatch = seed.users.find(su=>su.email===u.email);
+      if(u.password===undefined) u.password = seedMatch ? seedMatch.password : null;
+      if(u.driverId===undefined) u.driverId = seedMatch ? seedMatch.driverId : null;
+      if(u.customerId===undefined) u.customerId = seedMatch ? seedMatch.customerId : null;
+    });
+  }
+  storeSet(data);
+  return data;
+}
+function storeSet(obj){ try{ localStorage.setItem(LS_KEY, JSON.stringify(obj)); }catch(e){ /* storage unavailable: changes last until the page is closed */ } }
+function saveDB(){ storeSet(DB); }
+let DB = loadDB();
+let currentRole = null;
+let currentUser = null;
+let editingLoadId = null;
+
+/* ---------- LOGIN ---------- */
+function renderLogin(){
+  document.getElementById('demoAccounts').innerHTML = DEMO_USERS.map(u=>{
+    const rmeta = ROLES.find(r=>r.id===u.role);
+    return `<button class="role-btn" onclick="fillLogin('${u.email}','${u.password}')"><b>${rmeta.label}</b><span>${u.email}</span></button>`;
+  }).join('');
+}
+function fillLogin(email, password){
+  document.getElementById('loginEmail').value = email;
+  document.getElementById('loginPassword').value = password;
+  document.getElementById('loginError').textContent = '';
+}
+function attemptLogin(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  if(!email || !password){ errEl.textContent = 'Enter your email and password.'; return; }
+  const user = DB.users.find(u=>u.email.toLowerCase()===email && u.password && u.password===password);
+  if(!user){ errEl.textContent = 'Incorrect email or password.'; return; }
+  if(!user.active){ errEl.textContent = 'This account is inactive. Contact your administrator.'; return; }
+  errEl.textContent = '';
+  login(user);
+}
+function login(user){
+  currentRole = user.role;
+  currentUser = user;
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('whoName').textContent = user.name;
+  document.getElementById('whoRole').textContent = user.role.replace('_',' / ');
+  buildNav();
+  const landing = user.role==='driver' ? 'myloads' : user.role==='customer' ? 'customerloads' : 'dashboard';
+  navigate(landing);
+}
+function logout(){
+  currentRole=null; currentUser=null;
+  document.getElementById('loginEmail').value=''; document.getElementById('loginPassword').value=''; document.getElementById('loginError').textContent='';
+  document.getElementById('login').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+/* ---------- NAV ---------- */
+const NAV_BY_ROLE = {
+  owner_admin:[['dashboard','Dashboard'],['dispatch','Dispatch'],['loadboard','Load Board'],['users','Users'],['fleet','Fleet'], ['drivers','Drivers'],['customers','Customers'],['accounting','Accounting'],['payroll','Payroll'],['factoring','Factoring'],['documents','Documents'],['connections','Connections']],
+  dispatcher:[['dashboard','Dashboard'],['dispatch','Dispatch'],['loadboard','Load Board'],['fleet','Fleet'],['drivers','Drivers'],['connections','Connections']],
+  accounting:[['dashboard','Dashboard'],['accounting','Accounting'],['payroll','Payroll'],['factoring','Factoring'],['customers','Customers'],['connections','Connections']],
+  safety:[['dashboard','Dashboard'],['drivers','Drivers'],['fleet','Fleet']],
+  driver:[['myloads','My Loads'],['history','Completed Loads']],
+  customer:[['customerloads','My Shipments'],['invoices','Invoices']],
+};
+const LOCKED_LABEL = {fleet:'Fleet Management', drivers:'Driver Management', customers:'Customer Management', accounting:'Accounting', documents:'Document Center'};
+function buildNav(){
+  const items = NAV_BY_ROLE[currentRole];
+  document.getElementById('navItems').innerHTML = items.map(([key,label])=>
+    `<div class="nav-item" data-key="${key}" onclick="navigate('${key}')">${label}</div>`
+  ).join('');
+}
+function setActiveNav(key){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.key===key));
+}
+
+// Only these roles may create, edit or delete loads
+const LOAD_MANAGER_ROLES = ['owner_admin','dispatcher'];
+function canManageLoads(){ return LOAD_MANAGER_ROLES.includes(currentRole); }
+function nextLoadId(){ const max = DB.loads.reduce((m,l)=>Math.max(m, parseInt(String(l.id).replace(/\D/g,''))||0), 1000); return 'L-' + (max+1); }
+function navigate(key){
+  const main = document.getElementById('main');
+  // Pages are limited to the role's menu, so a hidden page can't be reached by a stray link
+  if(!(NAV_BY_ROLE[currentRole]||[]).some(([k])=>k===key)){
+    const first = NAV_BY_ROLE[currentRole][0][0];
+    if(key!==first) return navigate(first);
+  }
+  setActiveNav(key);
+  if(key==='dashboard') return renderDashboard(main);
+  if(key==='dispatch') return renderDispatch(main);
+  if(key==='myloads') return renderDriverLoads(main,false);
+  if(key==='history') return renderDriverLoads(main,true);
+  if(key==='customerloads') return renderCustomerLoads(main);
+  if(key==='invoices') return renderCustomerInvoices(main);
+  if(key==='loadboard') return renderLoadBoard(main);
+  if(key==='users') return renderUsers(main);
+  if(key==='factoring') return renderFactoring(main);
+  if(key==='fleet') return renderFleet(main);
+  if(key==='drivers') return renderDrivers(main);
+  if(key==='customers') return renderCustomersPage(main);
+  if(key==='accounting') return renderAccounting(main);
+  if(key==='payroll') return renderPayroll(main);
+  if(key==='documents') return renderDocuments(main);
+  if(key==='connections') return renderConnections(main);
+  // stubbed modules for phase 2
+  main.innerHTML = `<div class="topbar"><div><h1>${LOCKED_LABEL[key]||key}</h1><div class="desc">Module planned for the next build phase</div></div></div>
+    <div class="locked-msg">${LOCKED_LABEL[key]||'This module'} isn't wired up yet in this prototype.<br>It follows the same schema and role rules already used by Dashboard and Dispatch.</div>`;
+}
+
+/* ---------- HELPERS ---------- */
+function fmtMoney(n){ return '$' + Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0}); }
+function fmtDate(iso){ if(!iso) return '—'; const dt=new Date(iso); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+function fmtDateOnly(iso){ if(!iso) return '—'; if(/^\d{4}-\d{2}-\d{2}$/.test(iso)) iso += 'T12:00'; return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function daysUntil(dateStr){ return Math.ceil((new Date(dateStr) - new Date('2026-09-27')) / 86400000); }
+function driverName(id){ const d = DB.drivers.find(x=>x.id===id); return d? d.name : '— Unassigned'; }
+function truckUnit(id){ const t = DB.trucks.find(x=>x.id===id); return t? t.unit : '—'; }
+function trailerUnit(id){ const t = DB.trailers.find(x=>x.id===id); return t? t.unit : '—'; }
+function custName(id){ const c = DB.customers.find(x=>x.id===id); return c? c.name : '—'; }
+// Billable total for a load: line-haul rate plus accessorials (detention, layover, TONU)
+function loadTotal(l){ return (l.rate||0) + (l.detention||0) + (l.layover||0) + (l.tonu||0); }
+function fuelForLoad(loadId){ return DB.expenses.filter(e=>e.loadId===loadId && e.category==='fuel').reduce((s,e)=>s+(e.amount||0),0); }
+function loadRef(l){ return l.loadNumber ? `${l.id} · #${l.loadNumber}` : l.id; }
+function totalExpenses(){ return DB.expenses.reduce((s,e)=>s+(e.amount||0),0); }
+
+/* ---------- DASHBOARD ---------- */
+function renderDashboard(main){
+  const loads = DB.loads;
+  const total = loads.length;
+  const delivered = loads.filter(l=>['delivered','documents_pending','invoiced','paid'].includes(l.status)).length;
+  const active = loads.filter(l=>!['delivered','documents_pending','invoiced','paid','cancelled'].includes(l.status)).length;
+  const revenue = loads.filter(l=>l.status!=='cancelled').reduce((s,l)=>s+loadTotal(l),0);
+  const expenses = totalExpenses();
+  const invoicedLoads = loads.filter(l=>l.status==='invoiced');
+  const outstanding = invoicedLoads.reduce((s,l)=>s+loadTotal(l),0);
+
+  const driverAlerts = [];
+  DB.drivers.forEach(d=>{
+    const cdlD = daysUntil(d.cdlExp), medD = daysUntil(d.medExp);
+    if(cdlD<=30) driverAlerts.push({sev:cdlD<=7?'bad':'warn', text:`${d.name} — CDL expires in ${cdlD} days`});
+    if(medD<=30) driverAlerts.push({sev:medD<=7?'bad':'warn', text:`${d.name} — Medical card expires in ${medD} days`});
+    if(d.mvr.startsWith('1')) driverAlerts.push({sev:'warn', text:`${d.name} — MVR flagged for review`});
+  });
+  const truckAlerts = [];
+  DB.trucks.forEach(t=>{
+    const insD = daysUntil(t.insExp), regD = daysUntil(t.regExp), inspD = daysUntil(t.nextInspection);
+    if(insD<=30) truckAlerts.push({sev:insD<=7?'bad':'warn', text:`${t.unit} — Insurance expires in ${insD} days`});
+    if(regD<=30) truckAlerts.push({sev:regD<=7?'bad':'warn', text:`${t.unit} — Registration expires in ${regD} days`});
+    if(inspD<=14) truckAlerts.push({sev:inspD<=3?'bad':'warn', text:`${t.unit} — Inspection due in ${inspD} days`});
+  });
+
+  const upcoming = [];
+  loads.forEach(l=>{
+    [['Pickup',l.pickupAt,l.pickupLoc],['Delivery',l.deliveryAt,l.deliveryLoc]].forEach(([kind,at,loc])=>{
+      const dd = daysUntil(at);
+      if(dd>=-1 && dd<=5) upcoming.push({load:l.id, kind, at, loc, dd});
+    });
+  });
+  upcoming.sort((a,b)=> new Date(a.at)-new Date(b.at));
+
+  main.innerHTML = `
+  <div class="topbar"><div><h1>Dashboard</h1><div class="desc">Drive Mode Logistics — company-wide overview</div></div>
+    ${canManageLoads() ? `<button class="btn" onclick="navigate('dispatch'); openModal();">+ New Load</button>` : ''}</div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="lbl">Total Loads</div><div class="stat-num">${total}</div><div class="sub">All statuses</div></div>
+    <div class="kpi accent"><div class="lbl">Active Loads</div><div class="stat-num">${active}</div><div class="sub">In progress right now</div></div>
+    <div class="kpi good"><div class="lbl">Delivered</div><div class="stat-num">${delivered}</div><div class="sub">Completed runs</div></div>
+    <div class="kpi good"><div class="lbl">Revenue</div><div class="stat-num">${fmtMoney(revenue)}</div><div class="sub">Booked, incl. accessorials</div></div>
+    <div class="kpi bad"><div class="lbl">Expenses</div><div class="stat-num">${fmtMoney(expenses)}</div><div class="sub">${DB.expenses.length} recorded entries</div></div>
+    <div class="kpi warn"><div class="lbl">Outstanding Invoices</div><div class="stat-num">${fmtMoney(outstanding)}</div><div class="sub">${invoicedLoads.length} invoice(s) open</div></div>
+    <div class="kpi ${driverAlerts.length?'bad':''}"><div class="lbl">Driver Alerts</div><div class="stat-num">${driverAlerts.length}</div><div class="sub">CDL, medical, MVR</div></div>
+    <div class="kpi ${truckAlerts.length?'bad':''}"><div class="lbl">Truck Alerts</div><div class="stat-num">${truckAlerts.length}</div><div class="sub">Insurance, registration, inspection</div></div>
+  </div>
+  <div class="dash-cols">
+    <div class="panel">
+      <h3>Upcoming Pickups &amp; Deliveries</h3>
+      ${upcoming.length? upcoming.map(u=>`<div class="row-item"><div><div class="t1">${u.load} — ${u.kind}</div><div class="t2">${u.loc}</div></div><div style="text-align:right"><div class="t1">${fmtDate(u.at)}</div><div class="t2">${u.dd<0?'overdue':u.dd===0?'today':'in '+u.dd+' days'}</div></div></div>`).join('') : '<div class="empty">Nothing scheduled in the next 5 days.</div>'}
+    </div>
+    <div class="panel">
+      <h3>Alerts</h3>
+      ${[...driverAlerts,...truckAlerts].length ? [...driverAlerts,...truckAlerts].map(a=>`<div class="alert-item"><div class="alert-dot ${a.sev}"></div><div>${a.text}</div></div>`).join('') : '<div class="empty">No open alerts.</div>'}
+    </div>
+  </div>`;
+}
+
+/* ---------- DISPATCH ---------- */
+let dispatchFilter = 'all';
+function renderDispatch(main){
+  main.innerHTML = `
+  <div class="topbar"><div><h1>Dispatch</h1><div class="desc">Create, assign and track every load</div></div>
+    <button class="btn" onclick="openModal()">+ New Load</button></div>
+  <div class="filters">
+    <select id="statusFilter" onchange="dispatchFilter=this.value; renderDispatchTable()">
+      <option value="all">All statuses</option>
+      ${STATUSES.map(s=>`<option value="${s}">${STATUS_LABEL[s]}</option>`).join('')}
+    </select>
+    <input id="searchBox" placeholder="Search load #, ref #, city, shipper..." oninput="renderDispatchTable()">
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Load #</th><th>Route</th><th>Pickup</th><th>Delivery</th><th>Shipper / Broker</th><th>Equip.</th><th>Driver</th><th>Rate</th><th>Status</th></tr></thead>
+    <tbody id="loadsBody"></tbody>
+  </table></div>`;
+  renderDispatchTable();
+}
+function renderDispatchTable(){
+  const filter = dispatchFilter;
+  const q = (document.getElementById('searchBox')?.value||'').toLowerCase();
+  const rows = DB.loads.filter(l=>{
+    if(filter!=='all' && l.status!==filter) return false;
+    if(!q) return true;
+    const hay = [l.id,l.loadNumber||'',l.pickupLoc,l.deliveryLoc,custName(l.shipperId),custName(l.brokerId)].join(' ').toLowerCase();
+    return hay.includes(q);
+  }).sort((a,b)=> new Date(a.pickupAt)-new Date(b.pickupAt));
+  document.getElementById('loadsBody').innerHTML = rows.map(l=>`
+    <tr onclick="openModal('${l.id}')">
+      <td class="mono">${l.id}${l.loadNumber?'<div>#'+l.loadNumber+'</div>':''}</td>
+      <td>${l.pickupLoc} → ${l.deliveryLoc}<div class="mono">${l.miles} mi</div></td>
+      <td>${fmtDate(l.pickupAt)}</td>
+      <td>${fmtDate(l.deliveryAt)}</td>
+      <td>${custName(l.shipperId)}${l.brokerId?'<div class="mono">via '+custName(l.brokerId)+'</div>':''}</td>
+      <td>${l.equipment.replace('_',' ')}</td>
+      <td>${driverName(l.driverId)}${l.driverId && canManageLoads() ? `<button class="btn small secondary txt-btn" onclick="event.stopPropagation(); openTextDriver('${l.driverId}','${l.id}')" aria-label="Text ${driverName(l.driverId)}">Text</button>` : ''}</td>
+      <td>${fmtMoney(l.rate)}${loadTotal(l)!==l.rate?'<div class="mono">+'+fmtMoney(loadTotal(l)-l.rate)+' acc.</div>':''}</td>
+      <td><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></td>
+    </tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--dim);padding:26px;">No loads match this filter.</td></tr>`;
+}
+
+/* ---------- LOAD MODAL (create/edit) ---------- */
+function openModal(loadId){
+  if(!canManageLoads()){ notify('Only dispatchers and admins can add or change loads.'); return; }
+  editingLoadId = loadId || null;
+  const delBtn = document.getElementById('deleteLoadBtn'); delBtn.hidden = !loadId;
+  const l0 = loadId ? DB.loads.find(x=>x.id===loadId) : null;
+  document.getElementById('textLoadDriverBtn').hidden = !(l0 && l0.driverId);
+  const l = loadId ? DB.loads.find(x=>x.id===loadId) : null;
+  document.getElementById('modalTitle').textContent = l ? `Edit Load ${l.id}` : 'New Load';
+  document.getElementById('modalSub').textContent = l ? 'Update details, assignment or status.' : 'Fill in shipment details and assign resources.';
+
+  const shipperOpts = DB.customers.filter(c=>c.type!=='broker').map(c=>`<option value="${c.id}" ${l&&l.shipperId===c.id?'selected':''}>${c.name}</option>`).join('');
+  const brokerOpts = '<option value="">— None (direct) —</option>' + DB.customers.filter(c=>c.type!=='shipper').map(c=>`<option value="${c.id}" ${l&&l.brokerId===c.id?'selected':''}>${c.name}</option>`).join('');
+  const truckOpts = '<option value="">Unassigned</option>' + DB.trucks.map(t=>`<option value="${t.id}" ${l&&l.truckId===t.id?'selected':''}>${t.unit}</option>`).join('');
+  const trailerOpts = '<option value="">Unassigned</option>' + DB.trailers.map(t=>`<option value="${t.id}" ${l&&l.trailerId===t.id?'selected':''}>${t.unit} (${t.type})</option>`).join('');
+  const driverOpts = '<option value="">Unassigned</option>' + DB.drivers.map(d=>`<option value="${d.id}" ${l&&l.driverId===d.id?'selected':''}>${d.name}</option>`).join('');
+  const equipOpts = ['dry_van','reefer','flatbed','step_deck','power_only','box_truck','other'].map(e=>`<option value="${e}" ${l&&l.equipment===e?'selected':''}>${e.replace('_',' ')}</option>`).join('');
+  const statusOpts = STATUSES.map(s=>`<option value="${s}" ${l&&l.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('');
+
+  document.getElementById('formGrid').innerHTML = `
+    <div class="field span2"><label>Load Number (broker / shipper reference #)</label><input id="f_loadNumber" value="${l?(l.loadNumber||''):''}" placeholder="e.g. APX-448120 from the rate confirmation"></div>
+    <div class="field"><label>Pickup Location</label><input id="f_pickupLoc" value="${l?l.pickupLoc:''}" placeholder="City, ST"></div>
+    <div class="field"><label>Delivery Location</label><input id="f_deliveryLoc" value="${l?l.deliveryLoc:''}" placeholder="City, ST"></div>
+    <div class="field"><label>Pickup Date/Time</label><input type="datetime-local" id="f_pickupAt" value="${l?toLocalInput(l.pickupAt):''}"></div>
+    <div class="field"><label>Delivery Date/Time</label><input type="datetime-local" id="f_deliveryAt" value="${l?toLocalInput(l.deliveryAt):''}"></div>
+
+    <div class="section-divider">Customer</div>
+    <div class="field"><label>Shipper</label><select id="f_shipperId">${shipperOpts}</select></div>
+    <div class="field"><label>Broker</label><select id="f_brokerId">${brokerOpts}</select></div>
+
+    <div class="section-divider">Rate &amp; Equipment</div>
+    <div class="field"><label>Rate ($)</label><input type="number" id="f_rate" value="${l?l.rate:''}" placeholder="0.00"></div>
+    <div class="field"><label>Miles</label><input type="number" id="f_miles" value="${l?l.miles:''}" placeholder="0"></div>
+    <div class="field"><label>Equipment Type</label><select id="f_equipment">${equipOpts}</select></div>
+    <div class="field"><label>Load Status</label><select id="f_status">${statusOpts}</select></div>
+
+    <div class="section-divider">Assignment</div>
+    <div class="field"><label>Assigned Truck</label><select id="f_truckId">${truckOpts}</select></div>
+    <div class="field"><label>Assigned Trailer</label><select id="f_trailerId">${trailerOpts}</select></div>
+    <div class="field span2"><label>Assigned Driver</label><select id="f_driverId">${driverOpts}</select></div>
+
+    <div class="section-divider">Accessorials</div>
+    <div class="field"><label>Detention ($)</label><input type="number" id="f_detention" value="${l?l.detention:0}"></div>
+    <div class="field"><label>Layover ($)</label><input type="number" id="f_layover" value="${l?l.layover:0}"></div>
+    <div class="field"><label>TONU ($)</label><input type="number" id="f_tonu" value="${l?l.tonu:0}"></div>
+
+    <div class="section-divider">Documents</div>
+    ${l ? `<div class="span2"><label style="display:block;font-size:12px;color:var(--dim);margin-bottom:6px;font-weight:600;">Photos &amp; files from the driver and office</label><div id="f_attachments"></div>
+      <div class="doc-actions" style="margin-top:8px;"><select id="dt_modal">${Object.entries(DOC_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+      <span class="btn small secondary file-btn">Attach File<input type="file" accept="image/*,application/pdf" multiple aria-label="Attach photos or PDFs" onchange="addLoadFiles('${l.id}',this,document.getElementById('dt_modal').value,'file')"></span><span class="uploading" id="busy_${l.id}"></span></div></div>` : ''}
+    <div class="field"><label>Rate Confirmation</label><div class="file-row"><input type="file" id="f_doc_ratecon">${l&&l.docs.ratecon?`<span class="file-chip">${l.docs.ratecon}</span>`:''}</div></div>
+    <div class="field"><label>BOL</label><div class="file-row"><input type="file" id="f_doc_bol">${l&&l.docs.bol?`<span class="file-chip">${l.docs.bol}</span>`:''}</div></div>
+    <div class="field"><label>POD</label><div class="file-row"><input type="file" id="f_doc_pod">${l&&l.docs.pod?`<span class="file-chip">${l.docs.pod}</span>`:''}</div></div>
+
+    <div class="section-divider">Notes</div>
+    <div class="field span2"><textarea id="f_notes" placeholder="Dispatch notes...">${l?l.notes:''}</textarea></div>
+  `;
+  document.getElementById('loadOverlay').classList.add('open');
+  if(l) renderLoadAttachments(l.id);
+}
+function toLocalInput(iso){ const d=new Date(iso); const pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function closeModal(){ document.getElementById('loadOverlay').classList.remove('open'); editingLoadId=null; }
+
+function loadDeleteBlocker(id){
+  if(DB.settlements.some(st=>st.loadIds.includes(id))) return 'This load is in a driver settlement, so it can’t be deleted. Set its status to Cancelled instead.';
+  if(DB.factoringSubmissions.some(f=>f.loadId===id)) return 'This load was submitted for factoring, so it can’t be deleted. Set its status to Cancelled instead.';
+  const l = DB.loads.find(x=>x.id===id);
+  if(l && ['invoiced','paid'].includes(l.status)) return 'This load has been invoiced, so it can’t be deleted. Set its status to Cancelled instead.';
+  return null;
+}
+function deleteLoad(){
+  if(!canManageLoads() || !editingLoadId) return;
+  const id = editingLoadId;
+  const why = loadDeleteBlocker(id);
+  if(why){ notify(why); return; }
+  const l = DB.loads.find(x=>x.id===id);
+  askConfirm(`Delete load ${loadRef(l)} (${l.pickupLoc} → ${l.deliveryLoc})? This can’t be undone.`, 'Delete Load', ()=>{
+    DB.loads = DB.loads.filter(x=>x.id!==id);
+    DB.loadBoardPostings = DB.loadBoardPostings.filter(p=>p.loadId!==id);
+    // keep recorded expenses (the money was still spent) but unlink them from the deleted load
+    DB.expenses.forEach(e=>{ if(e.loadId===id){ e.loadId=null; e.notes = (e.notes?e.notes+' ':'') + `(load ${id} deleted)`; } });
+    saveDB(); closeModal();
+    renderDispatch(document.getElementById('main'));
+    notify(`Load ${id} deleted.`, 'ok');
+  });
+}
+function saveLoad(){
+  if(!canManageLoads()){ notify('Only dispatchers and admins can add or change loads.'); return; }
+  const g = id => document.getElementById(id);
+  const docFile = id => g(id).files[0] ? g(id).files[0].name : null;
+  const data = {
+    pickupLoc: g('f_pickupLoc').value || 'TBD',
+    deliveryLoc: g('f_deliveryLoc').value || 'TBD',
+    pickupAt: g('f_pickupAt').value ? new Date(g('f_pickupAt').value).toISOString() : new Date().toISOString(),
+    deliveryAt: g('f_deliveryAt').value ? new Date(g('f_deliveryAt').value).toISOString() : new Date().toISOString(),
+    shipperId: g('f_shipperId').value || null,
+    brokerId: g('f_brokerId').value || null,
+    rate: parseFloat(g('f_rate').value)||0,
+    miles: parseInt(g('f_miles').value)||0,
+    equipment: g('f_equipment').value,
+    status: g('f_status').value,
+    truckId: g('f_truckId').value || null,
+    trailerId: g('f_trailerId').value || null,
+    driverId: g('f_driverId').value || null,
+    detention: parseFloat(g('f_detention').value)||0,
+    layover: parseFloat(g('f_layover').value)||0,
+    tonu: parseFloat(g('f_tonu').value)||0,
+    notes: g('f_notes').value,
+    loadNumber: g('f_loadNumber').value.trim(),
+  };
+  if(editingLoadId){
+    const existing = DB.loads.find(x=>x.id===editingLoadId);
+    Object.assign(existing, data);
+    existing.docs.ratecon = docFile('f_doc_ratecon') || existing.docs.ratecon;
+    existing.docs.bol = docFile('f_doc_bol') || existing.docs.bol;
+    existing.docs.pod = docFile('f_doc_pod') || existing.docs.pod;
+  } else {
+    data.id = nextLoadId();
+    data.docs = { ratecon: docFile('f_doc_ratecon'), bol: docFile('f_doc_bol'), pod: docFile('f_doc_pod') };
+    DB.loads.push(data);
+  }
+  saveDB();
+  closeModal();
+  renderDispatch(document.getElementById('main'));
+}
+
+/* ---------- TEXT DRIVER ----------
+   The page can't send texts itself: it opens the phone's texting app (sms: link) with the message filled in,
+   and always shows the number and a Copy button because some views block that link. */
+const SMS_TEMPLATES = {
+  details:{label:'Load details', build:(d,l)=> l ? `Hi ${d.first}, load ${loadRef(l)}: ${l.pickupLoc} → ${l.deliveryLoc}. Pickup ${fmtDate(l.pickupAt)}. Delivery ${fmtDate(l.deliveryAt)}. ${l.miles} mi, ${l.equipment.replace('_',' ')}.${l.notes?' Notes: '+l.notes:''} — Drive Mode Dispatch` : `Hi ${d.first}, — Drive Mode Dispatch`},
+  pickup:{label:'Pickup reminder', build:(d,l)=> l ? `Hi ${d.first}, reminder: pickup for ${loadRef(l)} at ${l.pickupLoc}, ${fmtDate(l.pickupAt)}. Please update your status in the Drive Mode app when you arrive. — Dispatch` : ''},
+  checkcall:{label:'Check call', build:(d,l)=> l ? `Hi ${d.first}, check call for ${loadRef(l)}: what's your location and ETA to ${l.deliveryLoc}? — Dispatch` : `Hi ${d.first}, what's your location and ETA? — Dispatch`},
+  pod:{label:'Send BOL / POD', build:(d,l)=> l ? `Hi ${d.first}, please send the signed ${docStatus(l).bol?'POD':'BOL and POD'} for ${loadRef(l)} (${l.pickupLoc} → ${l.deliveryLoc}). Open My Loads in the Drive Mode app and tap Take Photo. Thanks! — Dispatch` : ''},
+  blank:{label:'Blank', build:()=> ''},
+};
+let smsState = {driverId:null, template:'details'};
+function smsPhone(raw){ const d = String(raw||'').replace(/\D/g,''); if(d.length===10) return '+1'+d; if(d.length===11 && d[0]==='1') return '+'+d; return d ? '+'+d : ''; }
+function openTextDriver(driverId, loadId){
+  if(!canManageLoads()){ notify('Only dispatchers and admins can text drivers from here.'); return; }
+  const d = DB.drivers.find(x=>x.id===driverId); if(!d) return;
+  if(!smsPhone(d.phone)){ notify(`${d.name} has no phone number. Add one on the Drivers page.`); return; }
+  smsState = {driverId, template: loadId ? 'details' : 'checkcall'};
+  document.getElementById('smsTitle').textContent = `Text ${d.name}`;
+  document.getElementById('smsSub').innerHTML = `<div class="sms-to"><span class="sms-num" id="smsNum">${d.phone}</span><button class="btn small secondary" onclick="copyText('${smsPhone(d.phone)}','Number copied.')">Copy Number</button></div>`;
+  const active = DB.loads.filter(l=>l.driverId===driverId && l.status!=='cancelled' && !['invoiced','paid'].includes(l.status)).sort((a,b)=>new Date(a.pickupAt)-new Date(b.pickupAt));
+  const sel = document.getElementById('smsLoad');
+  sel.innerHTML = '<option value="">— No specific load —</option>' + active.map(l=>`<option value="${l.id}">${loadRef(l)} — ${l.pickupLoc} → ${l.deliveryLoc} (${STATUS_LABEL[l.status]})</option>`).join('');
+  sel.value = loadId && active.some(l=>l.id===loadId) ? loadId : (active[0] ? active[0].id : '');
+  document.getElementById('smsTemplates').innerHTML = Object.entries(SMS_TEMPLATES).map(([k,t])=>`<button type="button" class="chip" data-t="${k}" onclick="smsState.template='${k}'; smsApplyTemplate()">${t.label}</button>`).join('');
+  smsApplyTemplate();
+  document.getElementById('smsOverlay').classList.add('open');
+}
+function smsApplyTemplate(){
+  const d = DB.drivers.find(x=>x.id===smsState.driverId); const l = DB.loads.find(x=>x.id===document.getElementById('smsLoad').value);
+  document.querySelectorAll('#smsTemplates .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.t===smsState.template ? 'true':'false'));
+  const t = SMS_TEMPLATES[smsState.template];
+  document.getElementById('smsBody').value = t.build({...d, first:d.name.split(' ')[0]}, l) || '';
+  smsUpdateLink();
+}
+function smsUpdateLink(){
+  const d = DB.drivers.find(x=>x.id===smsState.driverId); const body = document.getElementById('smsBody').value;
+  // "?&body=" works for both iPhone and Android texting apps
+  document.getElementById('smsOpen').href = `sms:${smsPhone(d.phone)}?&body=${encodeURIComponent(body)}`;
+  const n = body.length; document.getElementById('smsCount').textContent = `${n} characters${n>160?' · sends as '+Math.ceil(n/153)+' texts':''}`;
+}
+function closeTextDriver(){ document.getElementById('smsOverlay').classList.remove('open'); }
+function copyText(text, okMsg){
+  const done = ()=>notify(okMsg||'Copied.', 'ok');
+  const fallback = ()=>{ const ta = document.getElementById('smsBody'); if(ta && ta.value===text){ ta.focus(); ta.select(); notify('Press and hold to copy the selected text.', 'ok'); } else notify(text, 'ok'); };
+  try{ navigator.clipboard.writeText(text).then(done, fallback); }catch(e){ fallback(); }
+}
+
+/* ---------- LOAD DOCUMENTS (photos & files) ----------
+   File contents live in this browser's IndexedDB (photos are shrunk first); the load keeps a list of what's attached. */
+const DOC_TYPES = {bol:'BOL', pod:'POD', lumper:'Lumper receipt', scale:'Scale ticket', ratecon:'Rate confirmation', other:'Other'};
+const FileStore = (()=>{
+  let dbp = null; const mem = new Map();
+  function open(){
+    if(dbp) return dbp;
+    dbp = new Promise(res=>{ try{ const r = indexedDB.open('dmtms_files',1); r.onupgradeneeded = ()=>r.result.createObjectStore('files'); r.onsuccess = ()=>res(r.result); r.onerror = ()=>res(null); }catch(e){ res(null); } });
+    return dbp;
+  }
+  async function put(id, blob){ mem.set(id, blob); const db = await open(); if(!db) return false;
+    return new Promise(res=>{ try{ const tx = db.transaction('files','readwrite'); tx.objectStore('files').put(blob, id); tx.oncomplete = ()=>res(true); tx.onerror = ()=>res(false); }catch(e){ res(false); } }); }
+  async function get(id){ if(mem.has(id)) return mem.get(id); const db = await open(); if(!db) return null;
+    return new Promise(res=>{ try{ const r = db.transaction('files').objectStore('files').get(id); r.onsuccess = ()=>{ if(r.result) mem.set(id, r.result); res(r.result||null); }; r.onerror = ()=>res(null); }catch(e){ res(null); } }); }
+  async function del(id){ mem.delete(id); const db = await open(); if(!db) return; try{ db.transaction('files','readwrite').objectStore('files').delete(id); }catch(e){} }
+  return {put, get, del};
+})();
+function fmtSize(n){ return n>=1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(n/1024))+' KB'; }
+// Shrink phone photos (often 3–5 MB) to ~1600px JPEG so they store and load quickly
+function shrinkImage(file){
+  return new Promise(resolve=>{
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = ()=>{
+      const max = 1600, k = Math.min(1, max/Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(b=>resolve(b && b.size < file.size ? b : file), 'image/jpeg', 0.8);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+function loadFiles(l){ return l.files || (l.files = []); }
+function docStatus(l){ const f = loadFiles(l); return {bol: !!l.docs.bol || f.some(x=>x.type==='bol'), pod: !!l.docs.pod || f.some(x=>x.type==='pod')}; }
+async function addLoadFiles(loadId, input, type, source){
+  const l = DB.loads.find(x=>x.id===loadId); const files = [...(input.files||[])]; input.value = '';
+  if(!l || !files.length) return;
+  const busy = document.getElementById('busy_'+loadId); if(busy) busy.textContent = `Saving ${files.length} file${files.length>1?'s':''}…`;
+  let added = 0;
+  for(const f of files){
+    const isImg = (f.type||'').startsWith('image/'), isPdf = f.type==='application/pdf' || /\.pdf$/i.test(f.name);
+    if(!isImg && !isPdf){ notify(`${f.name} isn't a photo or PDF, so it wasn't added.`); continue; }
+    const blob = isImg ? await shrinkImage(f) : f;
+    if(blob.size > 15*1048576){ notify(`${f.name} is ${fmtSize(blob.size)}. Files must be under 15 MB.`); continue; }
+    const id = 'file' + Date.now() + Math.random().toString(36).slice(2,7);
+    await FileStore.put(id, blob);
+    const name = source==='camera' ? `${DOC_TYPES[type]} photo ${new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}` : f.name;
+    loadFiles(l).push({id, type, name, mime: isImg ? (blob.type||'image/jpeg') : 'application/pdf', size: blob.size, addedAt: new Date().toISOString(), by: currentUser ? currentUser.name : ''});
+    if(type==='bol' || type==='pod' || type==='ratecon') l.docs[type] = l.docs[type] || name;
+    added++;
+  }
+  saveDB();
+  if(added) notify(`${added} ${DOC_TYPES[type]} file${added>1?'s':''} added to ${l.id}.`, 'ok');
+  refreshAfterFiles();
+}
+function refreshAfterFiles(){
+  const main = document.getElementById('main');
+  if(document.getElementById('loadOverlay').classList.contains('open') && editingLoadId){ renderLoadAttachments(editingLoadId); }
+  const active = document.querySelector('.nav-item.active'); const key = active && active.dataset.key;
+  if(key==='myloads') renderDriverLoads(main,false); else if(key==='history') renderDriverLoads(main,true);
+  else if(key==='documents') renderDocuments(main); else if(key==='dispatch') renderDispatchTable();
+}
+function thumbsHtml(l){
+  const f = loadFiles(l);
+  if(!f.length) return '<div class="mono">No photos or files yet.</div>';
+  return `<div class="thumbs">${f.map(x=>`<button type="button" class="thumb" onclick="openFileViewer('${l.id}','${x.id}')" title="${x.name}">
+    ${x.mime.startsWith('image/') ? `<img class="ti" data-file="${x.id}" alt="${DOC_TYPES[x.type]}">` : '<span class="tp">PDF</span>'}
+    <span class="tl">${DOC_TYPES[x.type]||'File'}</span></button>`).join('')}</div>`;
+}
+const thumbUrls = new Map();
+async function hydrateThumbs(root){
+  for(const img of (root||document).querySelectorAll('img[data-file]')){
+    const id = img.dataset.file;
+    if(!thumbUrls.has(id)){ const b = await FileStore.get(id); if(!b){ img.replaceWith(Object.assign(document.createElement('span'),{className:'tp',textContent:'—',title:'Saved on another device'})); continue; } thumbUrls.set(id, URL.createObjectURL(b)); }
+    img.src = thumbUrls.get(id);
+  }
+}
+function docCaptureHtml(l){
+  const st = docStatus(l);
+  return `<div class="doc-block">
+    <div class="doc-checklist"><span class="doc-chk ${st.bol?'ok':''}">BOL ${st.bol?'✓':'needed'}</span><span class="doc-chk ${st.pod?'ok':''}">POD ${st.pod?'✓':'needed'}</span></div>
+    <div class="doc-actions">
+      <label class="sr-only" for="dt_${l.id}">Document type</label>
+      <select id="dt_${l.id}">${Object.entries(DOC_TYPES).filter(([k])=>k!=='ratecon').map(([k,v])=>`<option value="${k}" ${k===(st.bol?'pod':'bol')?'selected':''}>${v}</option>`).join('')}</select>
+      <span class="btn small file-btn">Take Photo<input type="file" accept="image/*" capture="environment" aria-label="Take a photo" onchange="addLoadFiles('${l.id}',this,document.getElementById('dt_${l.id}').value,'camera')"></span>
+      <span class="btn small secondary file-btn">Attach File<input type="file" accept="image/*,application/pdf" multiple aria-label="Attach photos or PDFs" onchange="addLoadFiles('${l.id}',this,document.getElementById('dt_${l.id}').value,'file')"></span>
+      <span class="uploading" id="busy_${l.id}"></span>
+    </div>
+    ${thumbsHtml(l)}
+  </div>`;
+}
+async function openFileViewer(loadId, fileId){
+  const l = DB.loads.find(x=>x.id===loadId); const f = l && loadFiles(l).find(x=>x.id===fileId); if(!f) return;
+  document.getElementById('fvTitle').textContent = `${DOC_TYPES[f.type]||'File'} — ${loadRef(l)}`;
+  document.getElementById('fvSub').textContent = `${f.name} · ${fmtSize(f.size)} · added ${fmtDate(f.addedAt)}${f.by?' by '+f.by:''}`;
+  const body = document.getElementById('fvBody'); body.innerHTML = '<div class="empty">Loading…</div>';
+  const canRemove = canManageLoads() || (currentRole==='driver' && currentUser && l.driverId===currentUser.driverId && !['invoiced','paid'].includes(l.status));
+  const del = document.getElementById('fvDelete'); del.hidden = !canRemove; del.onclick = ()=>removeLoadFile(loadId, fileId);
+  document.getElementById('fileOverlay').classList.add('open');
+  const b = await FileStore.get(fileId);
+  if(!b){ body.innerHTML = '<div class="locked-msg">This file was saved on another device, so it can’t be shown here.</div>'; return; }
+  if(f.mime.startsWith('image/')){ if(!thumbUrls.has(fileId)) thumbUrls.set(fileId, URL.createObjectURL(b)); body.innerHTML = `<img class="viewer-img" src="${thumbUrls.get(fileId)}" alt="${DOC_TYPES[f.type]} for ${l.id}">`; }
+  else body.innerHTML = `<div class="locked-msg"><b style="color:var(--text)">PDF on file</b><br>${f.name} · ${fmtSize(f.size)}<br>PDF preview isn’t available in this view.</div>`;
+}
+function closeFileViewer(){ document.getElementById('fileOverlay').classList.remove('open'); }
+function removeLoadFile(loadId, fileId){
+  askConfirm('Remove this file from the load? This can’t be undone.', 'Remove File', ()=>{
+    const l = DB.loads.find(x=>x.id===loadId); if(!l) return;
+    const f = loadFiles(l).find(x=>x.id===fileId);
+    l.files = loadFiles(l).filter(x=>x.id!==fileId);
+    if(f && ['bol','pod','ratecon'].includes(f.type) && l.docs[f.type]===f.name){ const other = l.files.find(x=>x.type===f.type); l.docs[f.type] = other ? other.name : null; }
+    FileStore.del(fileId); thumbUrls.delete(fileId);
+    saveDB(); closeFileViewer(); refreshAfterFiles(); notify('File removed.', 'ok');
+  });
+}
+function renderLoadAttachments(loadId){
+  const box = document.getElementById('f_attachments'); if(!box) return;
+  const l = DB.loads.find(x=>x.id===loadId); if(!l){ box.innerHTML=''; return; }
+  box.innerHTML = thumbsHtml(l); hydrateThumbs(box);
+}
+
+/* ---------- DRIVER PORTAL ---------- */
+function renderDriverLoads(main, completedOnly){
+  const myId = currentUser && currentUser.driverId;
+  const title = completedOnly ? 'Completed Loads' : 'My Loads';
+  if(!myId || !DB.drivers.find(d=>d.id===myId)){
+    main.innerHTML = `<div class="topbar"><div><h1>${title}</h1><div class="desc">Driver Portal</div></div></div>
+    <div class="locked-msg">Your account isn't linked to a driver profile yet.<br>Ask an administrator to link it under Users.</div>`;
+    return;
+  }
+  const mine = DB.loads.filter(l=> l.driverId===myId && (completedOnly ? ['delivered','documents_pending','invoiced','paid'].includes(l.status) : !['delivered','documents_pending','invoiced','paid','cancelled'].includes(l.status)));
+  main.innerHTML = `<div class="topbar"><div><h1>${title}</h1><div class="desc">${driverName(myId)} — Driver Portal</div></div></div>
+  <div class="card-list">${mine.length? mine.map(l=>`
+    <div class="load-card">
+      <div class="lc-top"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span><span class="mono">${loadRef(l)}</span></div>
+      <div class="lc-route">${l.pickupLoc} → ${l.deliveryLoc}</div>
+      <div class="lc-meta">
+        <span>Pickup: ${fmtDate(l.pickupAt)}</span><span>Delivery: ${fmtDate(l.deliveryAt)}</span><span>${l.miles} mi</span>
+      </div>
+      ${!completedOnly ? `
+      <div class="lc-meta" style="margin-top:14px;">
+        <select onchange="driverUpdateStatus('${l.id}',this.value)" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;">
+          ${STATUSES.filter(s=>['assigned','dispatched','at_pickup','loaded','in_transit','at_delivery','delivered'].includes(s)).map(s=>`<option value="${s}" ${l.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}
+        </select>
+      </div>
+      ${docCaptureHtml(l)}` : (['invoiced','paid'].includes(l.status) ? `<div class="doc-block">${thumbsHtml(l)}</div>` : docCaptureHtml(l))}
+    </div>`).join('') : '<div class="empty">No loads to show.</div>'}
+  </div>`;
+  hydrateThumbs(main);
+}
+function driverUpdateStatus(id, status){
+  const l = DB.loads.find(x=>x.id===id); l.status=status; saveDB(); renderDriverLoads(document.getElementById('main'), false);
+}
+
+
+/* ---------- CUSTOMER PORTAL ---------- */
+function customerNotLinked(main, title){
+  main.innerHTML = `<div class="topbar"><div><h1>${title}</h1><div class="desc">Customer Portal</div></div></div>
+  <div class="locked-msg">Your account isn't linked to a customer company yet.<br>Ask your Drive Mode contact to link it.</div>`;
+}
+function renderCustomerLoads(main){
+  const myCustId = currentUser && currentUser.customerId;
+  if(!myCustId || !DB.customers.find(c=>c.id===myCustId)) return customerNotLinked(main, 'My Shipments');
+  const mine = DB.loads.filter(l=>l.shipperId===myCustId || l.brokerId===myCustId);
+  main.innerHTML = `<div class="topbar"><div><h1>My Shipments</h1><div class="desc">${custName(myCustId)} — Customer Portal</div></div></div>
+  <div class="card-list">${mine.length ? mine.map(l=>`
+    <div class="load-card">
+      <div class="lc-top"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span><span class="mono">${loadRef(l)}</span></div>
+      <div class="lc-route">${l.pickupLoc} → ${l.deliveryLoc}</div>
+      <div class="lc-meta"><span>Pickup: ${fmtDate(l.pickupAt)}</span><span>Delivery: ${fmtDate(l.deliveryAt)}</span><span>${l.docs.pod?'POD available':'POD pending'}</span></div>
+    </div>`).join('') : '<div class="empty">No shipments yet.</div>'}</div>`;
+}
+function renderCustomerInvoices(main){
+  const myCustId = currentUser && currentUser.customerId;
+  if(!myCustId || !DB.customers.find(c=>c.id===myCustId)) return customerNotLinked(main, 'Invoices');
+  const mine = DB.loads.filter(l=>(l.shipperId===myCustId || l.brokerId===myCustId) && ['invoiced','paid'].includes(l.status));
+  main.innerHTML = `<div class="topbar"><div><h1>Invoices</h1><div class="desc">${custName(myCustId)}</div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Load #</th><th>Route</th><th>Line Haul</th><th>Accessorials</th><th>Total</th><th>Status</th></tr></thead>
+  <tbody>${mine.map(l=>`<tr><td class="mono">${loadRef(l)}</td><td>${l.pickupLoc} → ${l.deliveryLoc}</td><td>${fmtMoney(l.rate)}</td><td>${fmtMoney(loadTotal(l)-l.rate)}</td><td><b>${fmtMoney(loadTotal(l))}</b></td><td><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></td></tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:20px;">No invoices yet.</td></tr>`}</tbody></table></div>`;
+}
+
+/* ---------- LOAD BOARD INTEGRATION ---------- */
+function pillColor(bg,fg,text){ return `<span class="pill" style="background:${bg};color:${fg}">${text}</span>`; }
+const LB_STATUS_COLOR = {posted:['#2A3B57','#8FB4F0'], booked:['#1B3B27','#5FE39A'], removed:['#3B1E1E',"#E5555C"]};
+/* ---------- CONNECTIONS: load boards & factoring ----------
+   Sign-in happens on each provider's own site (passwords are never stored here). Live posting, load search and
+   invoice upload need API access from each provider plus a secure server, which this page can't provide. */
+const PROVIDERS = {
+  dat:{name:'DAT One', kind:'loadboard', board:'DAT', url:'https://www.dat.com/login', idLabel:'DAT user ID or email'},
+  truckstop:{name:'Truckstop', kind:'loadboard', board:'Truckstop', url:'https://truckstop.com/login/', idLabel:'Truckstop username or email'},
+  lb123:{name:'123Loadboard', kind:'loadboard', board:'123Loadboard', url:'https://member.123loadboard.com/', idLabel:'123Loadboard username'},
+  rts:{name:'RTS Financial', kind:'factoring', factoringId:'fc1', url:'https://rtsinc.com/user/login', idLabel:'RTS client number'},
+  triumph:{name:'Triumph', kind:'factoring', factoringId:'fc2', url:'https://triumph.io/', idLabel:'Triumph client number'},
+  otr:{name:'OTR Solutions', kind:'factoring', factoringId:'fc3', url:'https://otrsolutions.com/factoring-portal/', idLabel:'OTR Solutions client number'},
+};
+const FACTOR_KEYS = Object.keys(PROVIDERS).filter(k=>PROVIDERS[k].kind==='factoring');
+function integ(key){ DB.integrations = DB.integrations || {}; return DB.integrations[key] || (DB.integrations[key] = {}); }
+function boardKey(board){ return Object.keys(PROVIDERS).find(k=>PROVIDERS[k].board===board); }
+function factorKey(fcId){ return Object.keys(PROVIDERS).find(k=>PROVIDERS[k].factoringId===fcId); }
+function signInLink(key, label, small){ const pv = PROVIDERS[key]; return `<a class="btn ${small?'small':''} secondary" href="${pv.url}" target="_blank" rel="noopener noreferrer">${label || 'Sign in to '+pv.name} ↗</a>`; }
+function connKinds(){ return currentRole==='dispatcher' ? ['loadboard'] : currentRole==='accounting' ? ['factoring'] : ['loadboard','factoring']; }
+function renderConnections(main){
+  const card = key=>{
+    const pv = PROVIDERS[key], a = integ(key), saved = !!(a.account || a.mc);
+    const fc = pv.factoringId ? DB.factoringCompanies.find(c=>c.id===pv.factoringId) : null;
+    const isDefault = fc && (DB.integrations.defaultFactoring||'fc1')===fc.id;
+    return `<div class="panel conn-card">
+      <div class="conn-head"><h3 style="margin:0;">${pv.name}</h3>${saved ? pillColor('#173A24','#5FE39A','Account saved') : pillColor('#28394C','#B9C9DA','Not set up')}${isDefault?pillColor('#2A2013','#FF6A1A','Default factor'):''}</div>
+      <div class="conn-rows">
+        <div class="row-item"><div class="t2">${pv.idLabel}</div><div>${a.account||'—'}</div></div>
+        <div class="row-item"><div class="t2">${pv.kind==='factoring'?'MC number on file':'MC / DOT number'}</div><div>${a.mc||'—'}</div></div>
+        ${fc ? `<div class="row-item"><div class="t2">Advance · fee</div><div>${fc.advanceRate}% · ${fc.feePct}%</div></div>` : ''}
+        <div class="row-item"><div class="t2">Live sync</div><div class="t2">Needs ${pv.name} API access</div></div>
+      </div>
+      <div class="conn-actions">${signInLink(key)}<button class="btn small secondary" onclick="openConnModal('${key}')">${saved?'Edit':'Set Up'}</button>
+        ${fc && !isDefault ? `<button class="btn small secondary" onclick="setDefaultFactor('${fc.id}')">Make Default</button>` : ''}</div>
+    </div>`;
+  };
+  const kinds = connKinds();
+  main.innerHTML = `<div class="topbar"><div><h1>Connections</h1><div class="desc">Your load board and factoring accounts in one place</div></div></div>
+  ${kinds.includes('loadboard') ? `<h3 class="conn-section">Load Boards</h3><div class="conn-grid">${['dat','truckstop','lb123'].map(card).join('')}</div>` : ''}
+  ${kinds.includes('factoring') ? `<h3 class="conn-section">Factoring</h3><div class="conn-grid">${FACTOR_KEYS.map(card).join('')}</div>` : ''}
+  <div class="panel" style="margin-top:18px;">
+    <h3>How these connections work</h3>
+    <div class="conn-note">
+      <p><b>Sign in</b> opens the provider's own sign-in page in a new tab. Your passwords stay with each provider. This app never asks for or stores them.</p>
+      <p><b>What's tracked here:</b> which loads you posted and where, which invoices you sent to which factor, and their funding status. You record these as you go.</p>
+      <p><b>Not yet automatic:</b> posting loads, pulling live loads, and uploading invoices straight to a factor. Each provider has to approve API access for Drive Mode, and the app needs a secure server to hold those keys.</p>
+    </div>
+  </div>`;
+}
+function openConnModal(key){
+  const pv = PROVIDERS[key], a = integ(key);
+  const fc = pv.factoringId ? DB.factoringCompanies.find(c=>c.id===pv.factoringId) : null;
+  const fields = [
+    {id:'account',label:pv.idLabel,span2:true},
+    {id:'mc',label:'MC / DOT number',placeholder:'e.g. MC-123456'},
+    {id:'phone',label:'Support phone (optional)'},
+  ];
+  if(fc) fields.push({id:'advanceRate',label:'Advance rate (%)',type:'number'},{id:'feePct',label:'Factoring fee (%)',type:'number'});
+  fields.push({id:'notes',label:'Notes',type:'textarea'});
+  openEntityModal(`${pv.name} account`, 'Don’t enter your password. You sign in on their site.', fields,
+    {...a, ...(fc?{advanceRate:fc.advanceRate, feePct:fc.feePct}:{})}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value.trim();
+    Object.assign(a, {account:g('account'), mc:g('mc'), phone:g('phone'), notes:g('notes'), updatedAt:new Date().toISOString()});
+    if(fc){ const ar=parseFloat(g('advanceRate')), fp=parseFloat(g('feePct'));
+      if(!(ar>0 && ar<=100) || !(fp>=0 && fp<50)){ notify('Advance rate must be 1–100% and the fee 0–50%.'); return false; }
+      fc.advanceRate=ar; fc.feePct=fp; }
+    saveDB(); renderConnections(document.getElementById('main')); notify(`${pv.name} account saved.`, 'ok');
+  });
+}
+function setDefaultFactor(fcId){ DB.integrations.defaultFactoring = fcId; saveDB(); renderConnections(document.getElementById('main')); }
+
+function renderLoadBoard(main){
+  const available = DB.loads.filter(l=>l.status==='available');
+  const postings = DB.loadBoardPostings;
+  main.innerHTML = `
+  <div class="topbar"><div><h1>Load Board</h1><div class="desc">Post open loads to external boards and pull in outside freight</div></div></div>
+  <div class="conn-strip">${['dat','truckstop','lb123'].map(k=>signInLink(k, 'Open '+PROVIDERS[k].name, true)).join('')}<button class="btn small secondary" onclick="navigate('connections')">Manage Accounts</button></div>
+  <div class="dash-cols" style="grid-template-columns:1fr 1fr;">
+    <div class="panel">
+      <h3>Your Open Loads</h3>
+      ${available.length ? available.map(l=>{
+        const posting = postings.find(p=>p.loadId===l.id && p.status==='posted');
+        return `<div class="row-item"><div><div class="t1">${l.id} — ${l.pickupLoc} → ${l.deliveryLoc}</div><div class="t2">${fmtMoney(l.rate)} · ${l.miles} mi · ${l.equipment.replace('_',' ')}</div></div>
+        <div>${posting ? pillColor(...LB_STATUS_COLOR.posted,'Posted to '+posting.board) : `<button class="btn small" onclick="postToBoard('${l.id}')">Post to Board</button>`}</div></div>`;
+      }).join('') : '<div class="empty">No available loads to post right now.</div>'}
+    </div>
+    <div class="panel">
+      <h3>Active Postings</h3>
+      ${postings.filter(p=>p.status==='posted').length ? postings.filter(p=>p.status==='posted').map(p=>`
+        <div class="row-item"><div><div class="t1">${p.loadId} on ${p.board}</div><div class="t2">${p.externalRef ? p.externalRef+' · ' : ''}${fmtMoney(p.postedRate)}</div></div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn small" onclick="bookPosting('${p.id}')">Mark Booked</button>
+          <button class="btn small secondary" onclick="removePosting('${p.id}')">Remove</button>
+        </div></div>`).join('') : '<div class="empty">Nothing currently posted.</div>'}
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <h3>Marketplace Feed — DAT / Truckstop / 123Loadboard</h3>
+    <div class="conn-note" style="margin:-6px 0 10px;">Sample listings. A live feed needs load board API access. Until then, find loads on the boards themselves and add them in Dispatch.</div>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Board</th><th>Broker</th><th>Route</th><th>Pickup</th><th>Equip.</th><th>Rate</th><th></th></tr></thead>
+    <tbody>${DB.loadBoardListings.filter(x=>!x.imported).map(x=>`
+      <tr><td>${x.board}</td><td>${x.broker}</td><td>${x.origin} → ${x.destination}<div class="mono">${x.miles} mi</div></td><td>${fmtDate(x.pickupDate)}</td><td>${x.equipment.replace('_',' ')}</td><td>${fmtMoney(x.rate)}</td>
+      <td><button class="btn small" onclick="importListing('${x.id}')">Import to Dispatch</button></td></tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px;">No external listings match your lanes right now.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+// Records a posting made on the board's own site (posting there directly needs API access)
+function postToBoard(loadId){
+  const l = DB.loads.find(x=>x.id===loadId);
+  openEntityModal(`Post ${loadRef(l)}`, `${l.pickupLoc} → ${l.deliveryLoc} · ${fmtMoney(l.rate)} · ${l.equipment.replace('_',' ')}. Post it on the board's site, then record it here.`, [
+    {id:'board',label:'Load board',type:'select',span2:true,options:['dat','truckstop','lb123'].map(k=>({value:k,label:PROVIDERS[k].name}))},
+    {id:'ref',label:'Posting ID from the board (optional)'},
+    {id:'rate',label:'Posted rate ($)',type:'number'},
+  ], {board:'dat', rate:l.rate}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const k = g('board');
+    DB.loadBoardPostings.push({id:'lbp'+Date.now(), loadId, board:PROVIDERS[k].board, externalRef:g('ref').trim(), postedRate:parseFloat(g('rate'))||l.rate, status:'posted', postedAt:new Date().toISOString()});
+    saveDB(); renderLoadBoard(document.getElementById('main')); notify(`${loadRef(l)} recorded as posted on ${PROVIDERS[k].name}.`, 'ok');
+  });
+  // quick link to the chosen board inside the form
+  const grid = document.getElementById('entityFormGrid');
+  const tip = document.createElement('div'); tip.className='span2'; tip.id='postBoardLink';
+  const upd = ()=>{ tip.innerHTML = signInLink(document.getElementById('ent_board').value, null, true); };
+  grid.appendChild(tip); document.getElementById('ent_board').addEventListener('change', upd); upd();
+}
+function bookPosting(id){
+  const p = DB.loadBoardPostings.find(x=>x.id===id); p.status='booked'; p.bookedAt=new Date().toISOString();
+  const l = DB.loads.find(x=>x.id===p.loadId); if(l && l.status==='available') l.status='assigned';
+  saveDB(); renderLoadBoard(document.getElementById('main'));
+}
+function removePosting(id){
+  const p = DB.loadBoardPostings.find(x=>x.id===id); p.status='removed';
+  saveDB(); renderLoadBoard(document.getElementById('main'));
+}
+function importListing(id){
+  if(!canManageLoads()){ notify('Only dispatchers and admins can add loads.'); return; }
+  const x = DB.loadBoardListings.find(l=>l.id===id);
+  const newId = nextLoadId();
+  let broker = DB.customers.find(c=>c.name===x.broker);
+  if(!broker){ broker = {id:'cus'+Date.now(), name:x.broker, type:'broker', contact:'', email:'', phone:'', terms:'Quick Pay'}; DB.customers.push(broker); }
+  DB.loads.push({id:newId, shipperId:null, brokerId:broker.id, pickupLoc:x.origin, deliveryLoc:x.destination, pickupAt:x.pickupDate, deliveryAt:x.pickupDate, rate:x.rate, miles:x.miles, equipment:x.equipment, truckId:null, trailerId:null, driverId:null, status:'available', detention:0, layover:0, tonu:0, loadNumber:x.externalRef, notes:'Imported from '+x.board+' ('+x.externalRef+')', docs:{}});
+  x.imported = true;
+  saveDB(); renderLoadBoard(document.getElementById('main'));
+}
+
+/* ---------- FACTORING INTEGRATION ---------- */
+const FACT_STATUS_COLOR = {submitted:['#2A2E4A','#9AA6F0'], approved:['#33325A','#B6A9F5'], funded:['#173A24','#5FE39A'], reserve_released:['#1B3B27','#5FE39A'], rejected:['#3B1E1E','#E5555C']};
+const FACT_STATUS_LABEL = {submitted:'Submitted', approved:'Approved', funded:'Funded', reserve_released:'Reserve Released', rejected:'Rejected'};
+function renderFactoring(main){
+  const invoiced = DB.loads.filter(l=>l.status==='invoiced');
+  const subs = DB.factoringSubmissions;
+  const totalAdvanced = subs.reduce((s,f)=>{ const fc=DB.factoringCompanies.find(c=>c.id===f.factoringId); return s + (f.amount * fc.advanceRate/100); },0);
+  main.innerHTML = `
+  <div class="topbar"><div><h1>Factoring</h1><div class="desc">Submit invoices for same-day advances and track funding</div></div></div>
+  <div class="conn-strip">${FACTOR_KEYS.map(k=>signInLink(k, 'Open '+PROVIDERS[k].name, true)).join('')}<button class="btn small secondary" onclick="navigate('connections')">Manage Accounts</button></div>
+  <div class="kpi-grid kpi3">
+    <div class="kpi accent"><div class="lbl">Ready to Submit</div><div class="stat-num">${invoiced.filter(l=>!subs.find(s=>s.loadId===l.id)).length}</div><div class="sub">Invoiced, not yet factored</div></div>
+    <div class="kpi good"><div class="lbl">Total Advanced</div><div class="stat-num">${fmtMoney(totalAdvanced)}</div><div class="sub">Across ${subs.length} submission(s)</div></div>
+    <div class="kpi"><div class="lbl">Factoring Partners</div><div class="stat-num">${DB.factoringCompanies.filter(c=>c.active).length}</div><div class="sub">${DB.factoringCompanies.map(c=>c.name).join(' · ')}</div></div>
+  </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>Invoiced Loads</h3>
+    ${invoiced.length ? invoiced.map(l=>{
+      const sub = subs.find(s=>s.loadId===l.id);
+      const docsReady = l.docs.ratecon && l.docs.bol && l.docs.pod;
+      return `<div class="row-item"><div><div class="t1">${loadRef(l)} — ${custName(l.shipperId)}</div><div class="t2">${fmtMoney(loadTotal(l))} · ${docsReady?'docs complete':'missing docs — funding may be delayed'}</div></div>
+      <div>${sub ? pillColor(...FACT_STATUS_COLOR[sub.status], FACT_STATUS_LABEL[sub.status]) : `<button class="btn small" onclick="submitFactoring('${l.id}')">Submit to Factoring</button>`}</div></div>`;
+    }).join('') : '<div class="empty">No invoiced loads waiting on factoring.</div>'}
+  </div>
+  <div class="panel">
+    <h3>Submissions</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Load</th><th>Factor</th><th>Amount</th><th>Advance</th><th>Reserve</th><th>Status</th><th></th></tr></thead>
+    <tbody>${subs.map(s=>{
+      const fc = DB.factoringCompanies.find(c=>c.id===s.factoringId);
+      const advance = s.amount*fc.advanceRate/100, fee = s.amount*fc.feePct/100, reserve = s.amount-advance-fee;
+      const fk = factorKey(fc.id);
+      return `<tr><td class="mono">${s.loadId}</td><td>${fc.name}${fk?`<div><a class="mono" href="${PROVIDERS[fk].url}" target="_blank" rel="noopener noreferrer">Open portal ↗</a></div>`:''}</td><td>${fmtMoney(s.amount)}</td><td>${fmtMoney(advance)}</td><td>${fmtMoney(reserve)}</td><td>${pillColor(...FACT_STATUS_COLOR[s.status],FACT_STATUS_LABEL[s.status])}</td>
+      <td>${s.status==='submitted'?`<button class="btn small" onclick="advanceFactoring('${s.id}')">Mark Funded</button>`:''}</td></tr>`;
+    }).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px;">No submissions yet.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+function submitFactoring(loadId){
+  const l = DB.loads.find(x=>x.id===loadId);
+  const partners = DB.factoringCompanies.filter(c=>c.active);
+  const def = (DB.integrations && DB.integrations.defaultFactoring) || partners[0].id;
+  const st = docStatus(l);
+  const missing = [!l.docs.ratecon && !loadFiles(l).some(f=>f.type==='ratecon') ? 'rate confirmation':'', !st.bol?'BOL':'', !st.pod?'POD':''].filter(Boolean);
+  openEntityModal(`Submit ${loadRef(l)} for factoring`, `${fmtMoney(loadTotal(l))} invoice to ${custName(l.brokerId||l.shipperId)}. Upload the invoice${missing.length?'':', rate con, BOL and POD'} on the factor's portal, then record it here.${missing.length?' Missing: '+missing.join(', ')+'.':''}`, [
+    {id:'factor',label:'Factoring company',type:'select',span2:true,options:partners.map(c=>({value:c.id,label:`${c.name} — ${c.advanceRate}% advance, ${c.feePct}% fee`}))},
+    {id:'ref',label:'Schedule / batch number from the factor (optional)',span2:true},
+  ], {factor:def}, ()=>{
+    const fcId = document.getElementById('ent_factor').value;
+    DB.factoringSubmissions.push({id:'fs'+Date.now(), loadId, factoringId:fcId, amount:loadTotal(l), externalRef:document.getElementById('ent_ref').value.trim(), status:'submitted', submittedAt:new Date().toISOString(), fundedAt:null});
+    saveDB(); renderFactoring(document.getElementById('main')); notify(`${loadRef(l)} recorded as submitted to ${DB.factoringCompanies.find(c=>c.id===fcId).name}.`, 'ok');
+  });
+  const grid = document.getElementById('entityFormGrid');
+  const tip = document.createElement('div'); tip.className='span2';
+  const upd = ()=>{ const k = factorKey(document.getElementById('ent_factor').value); tip.innerHTML = k ? signInLink(k, 'Open '+PROVIDERS[k].name+' portal', true) : ''; };
+  grid.appendChild(tip); document.getElementById('ent_factor').addEventListener('change', upd); upd();
+}
+function advanceFactoring(subId){
+  const s = DB.factoringSubmissions.find(x=>x.id===subId); s.status='funded'; s.fundedAt=new Date().toISOString();
+  const l = DB.loads.find(x=>x.id===s.loadId); if(l) l.status='paid';
+  saveDB(); renderFactoring(document.getElementById('main'));
+}
+
+/* ---------- GENERIC ENTITY MODAL (Fleet / Drivers / Customers / Accounting forms) ---------- */
+let entitySaveCallback = null;
+function openEntityModal(title, sub, fields, values, onSave){
+  document.getElementById('entityModalTitle').textContent = title;
+  document.getElementById('entityModalSub').textContent = sub || '';
+  document.getElementById('entityFormGrid').innerHTML = fields.map(f=>{
+    const val = (values && values[f.id]!=null) ? values[f.id] : '';
+    if(f.type==='select') return `<div class="field ${f.span2?'span2':''}"><label>${f.label}</label><select id="ent_${f.id}">${f.options.map(o=>`<option value="${o.value}" ${String(o.value)===String(val)?'selected':''}>${o.label}</option>`).join('')}</select></div>`;
+    if(f.type==='textarea') return `<div class="field span2"><label>${f.label}</label><textarea id="ent_${f.id}">${val}</textarea></div>`;
+    return `<div class="field ${f.span2?'span2':''}"><label>${f.label}</label><input type="${f.type||'text'}" id="ent_${f.id}" value="${val}" ${f.placeholder?`placeholder="${f.placeholder}"`:''}></div>`;
+  }).join('');
+  entitySaveCallback = onSave;
+  document.getElementById('entityOverlay').classList.add('open');
+}
+function closeEntityModal(){ document.getElementById('entityOverlay').classList.remove('open'); entitySaveCallback=null; }
+// A save callback can return false to keep the modal open (e.g. validation failed)
+function saveEntityModal(){ if(entitySaveCallback && entitySaveCallback()===false) return; closeEntityModal(); }
+function expPill(dateStr){
+  const dd = daysUntil(dateStr);
+  const color = dd<=7 ? ['#3B1E1E','#E5555C'] : dd<=30 ? ['#4A3A1E','#F0C878'] : ['#1B3B27','#5FE39A'];
+  return pillColor(color[0], color[1], fmtDateOnly(dateStr) + (dd<=30 ? ` (${dd}d)` : ''));
+}
+
+/* ---------- FLEET ---------- */
+function renderFleet(main){
+  main.innerHTML = `
+  <div class="topbar"><div><h1>Fleet Management</h1><div class="desc">Trucks and trailers — compliance at a glance</div></div>
+    <div style="display:flex;gap:8px;"><button class="btn secondary" onclick="openTrailerModal()">+ Trailer</button><button class="btn" onclick="openTruckModal()">+ Truck</button></div></div>
+  <div class="panel" style="margin-bottom:16px;"><h3>Trucks</h3>
+  <div class="table-wrap" style="border:none;"><table><thead><tr><th>Unit</th><th>VIN</th><th>Plate</th><th>Mileage</th><th>Insurance</th><th>Registration</th><th>Next Inspection</th><th></th></tr></thead>
+  <tbody>${DB.trucks.map(t=>`<tr><td>${t.unit}</td><td class="mono">${t.vin}</td><td>${t.plate}</td><td>${(t.mileage||0).toLocaleString()}</td>
+    <td>${expPill(t.insExp)}</td><td>${expPill(t.regExp)}</td><td>${expPill(t.nextInspection)}</td>
+    <td><button class="btn small secondary" onclick="openTruckModal('${t.id}')">Edit</button></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="panel"><h3>Trailers</h3>
+  <div class="table-wrap" style="border:none;"><table><thead><tr><th>Unit</th><th>Type</th><th>Plate</th><th>Insurance</th><th>Registration</th><th></th></tr></thead>
+  <tbody>${DB.trailers.map(t=>`<tr><td>${t.unit}</td><td>${t.type}</td><td>${t.plate}</td><td>${expPill(t.insExp)}</td><td>${expPill(t.regExp)}</td>
+    <td><button class="btn small secondary" onclick="openTrailerModal('${t.id}')">Edit</button></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function openTruckModal(id){
+  const t = id ? DB.trucks.find(x=>x.id===id) : null;
+  openEntityModal(t?'Edit Truck':'Add Truck', 'VIN, plate and compliance dates', [
+    {id:'unit',label:'Unit Number'},{id:'vin',label:'VIN'},{id:'plate',label:'License Plate'},
+    {id:'mileage',label:'Mileage',type:'number'},{id:'insExp',label:'Insurance Expiration',type:'date'},
+    {id:'regExp',label:'Registration Expiration',type:'date'},{id:'nextInspection',label:'Next Inspection Due',type:'date'},
+  ], t||{}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={unit:g('unit'),vin:g('vin'),plate:g('plate'),mileage:parseInt(g('mileage'))||0,insExp:g('insExp'),regExp:g('regExp'),nextInspection:g('nextInspection')};
+    if(t) Object.assign(t,data); else DB.trucks.push({id:'trk'+Date.now(), ...data});
+    saveDB(); renderFleet(document.getElementById('main'));
+  });
+}
+function openTrailerModal(id){
+  const t = id ? DB.trailers.find(x=>x.id===id) : null;
+  openEntityModal(t?'Edit Trailer':'Add Trailer', '', [
+    {id:'unit',label:'Unit Number'},
+    {id:'type',label:'Type',type:'select',options:[{value:'Dry Van',label:'Dry Van'},{value:'Reefer',label:'Reefer'},{value:'Flatbed',label:'Flatbed'},{value:'Step Deck',label:'Step Deck'}]},
+    {id:'plate',label:'License Plate'},{id:'insExp',label:'Insurance Expiration',type:'date'},{id:'regExp',label:'Registration Expiration',type:'date'},
+  ], t||{}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={unit:g('unit'),type:g('type'),plate:g('plate'),insExp:g('insExp'),regExp:g('regExp')};
+    if(t) Object.assign(t,data); else DB.trailers.push({id:'tr'+Date.now(), ...data});
+    saveDB(); renderFleet(document.getElementById('main'));
+  });
+}
+
+/* ---------- DRIVERS ---------- */
+function renderDrivers(main){
+  main.innerHTML = `<div class="topbar"><div><h1>Driver Management</h1><div class="desc">Profiles, CDL/medical compliance and assignments</div></div>
+  <button class="btn" onclick="openDriverModal()">+ Driver</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>CDL #</th><th>CDL Exp</th><th>Medical Exp</th><th>MVR</th><th>Truck</th><th>Pay</th><th>Status</th><th></th></tr></thead>
+  <tbody>${DB.drivers.map(d=>`<tr><td>${d.name}</td><td>${d.phone}</td><td>${d.email}</td><td class="mono">${d.cdl}</td>
+    <td>${expPill(d.cdlExp)}</td><td>${expPill(d.medExp)}</td><td>${d.mvr}</td><td>${truckUnit(d.truckId)}</td><td>${payDesc(d)}<div class="mono">${d.classification==='w2_employee'?'W-2':'1099'}</div></td>
+    <td><span class="pill" style="background:${d.status==='active'?'#1B3B27':'#3B1E1E'};color:${d.status==='active'?'#5FE39A':'#E5555C'}">${d.status}</span></td>
+    <td><div style="display:flex;gap:6px;">${canManageLoads()?`<button class="btn small" onclick="openTextDriver('${d.id}')">Text</button>`:''}<button class="btn small secondary" onclick="openDriverModal('${d.id}')">Edit</button></div></td></tr>`).join('')}</tbody></table></div>`;
+}
+function openDriverModal(id){
+  const d = id ? DB.drivers.find(x=>x.id===id) : null;
+  openEntityModal(d?'Edit Driver':'Add Driver', '', [
+    {id:'name',label:'Full Name',span2:true},{id:'phone',label:'Phone'},{id:'email',label:'Email'},
+    {id:'cdl',label:'CDL Number'},{id:'cdlExp',label:'CDL Expiration',type:'date'},{id:'medExp',label:'Medical Card Expiration',type:'date'},
+    {id:'mvr',label:'MVR Notes',span2:true},
+    {id:'truckId',label:'Assigned Truck',type:'select',options:[{value:'',label:'Unassigned'},...DB.trucks.map(t=>({value:t.id,label:t.unit}))]},
+    {id:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'on_leave',label:'On Leave'},{value:'terminated',label:'Terminated'}]},
+    {id:'payType',label:'Pay Type',type:'select',options:[{value:'per_mile',label:'Per Mile'},{value:'percentage',label:'Percentage of Load'},{value:'salary',label:'Salary'}]},
+    {id:'paySplit',label:'Percentage Split (driver / company)',type:'select',options:[{value:'50_50',label:'50/50 — driver gets 50% after dispatch fee & fuel'},{value:'30_70',label:'30/70 — driver gets 30% of full load, no deductions'},{value:'oo',label:'Owner-Op — 100% minus 12% dispatch, fuel & insurance (1099 only)'}]},
+    {id:'payRate',label:'Pay Rate',type:'number'},
+    {id:'classification',label:'Classification',type:'select',options:[{value:'w2_employee',label:'W-2 Employee'},{value:'owner_operator_1099',label:'Owner-Operator (1099)'}]},
+    {id:'insuranceWeekly',label:'Insurance Deduction ($ per week)',type:'number',placeholder:'e.g. 325'},
+  ], d ? {...d, paySplit:d.paySplit||'50_50'} : {paySplit:'50_50'}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const payType = g('payType'), paySplit = g('paySplit');
+    const payRate = payType==='percentage' ? SPLITS[paySplit].driver : (parseFloat(g('payRate'))||0);
+    const cls = g('classification');
+    if(payType==='percentage' && paySplit==='oo' && cls!=='owner_operator_1099'){ notify('The Owner-Op split is for 1099 owner-operators. Change Classification to Owner-Operator (1099) or pick 50/50 or 30/70.'); return false; }
+    if(!g('name').trim()){ notify('Enter the driver’s name.'); return false; }
+    if(payType!=='percentage' && !(payRate>0)){ notify(payType==='per_mile' ? 'Enter the pay per mile, e.g. 0.55.' : 'Enter the weekly salary.'); return false; }
+    const data={name:g('name'),phone:g('phone'),email:g('email'),cdl:g('cdl'),cdlExp:g('cdlExp'),medExp:g('medExp'),mvr:g('mvr'),truckId:g('truckId')||null,status:g('status'),payType,paySplit:payType==='percentage'?paySplit:null,payRate,classification:cls,insuranceWeekly:cls==='owner_operator_1099'?Math.max(0,parseFloat(g('insuranceWeekly'))||0):0};
+    if(d) Object.assign(d,data); else DB.drivers.push({id:'drv'+Date.now(), ...data});
+    saveDB(); renderDrivers(document.getElementById('main'));
+  });
+  const pt = document.getElementById('ent_payType');
+  pt.addEventListener('change', driverPayFieldsToggle);
+  document.getElementById('ent_classification').addEventListener('change', driverPayFieldsToggle);
+  driverPayFieldsToggle();
+}
+// Percentage pay picks a split; per-mile and salary type a rate
+function driverPayFieldsToggle(){
+  const t = document.getElementById('ent_payType').value;
+  const splitField = document.getElementById('ent_paySplit').closest('.field');
+  const rateField = document.getElementById('ent_payRate').closest('.field');
+  splitField.hidden = t!=='percentage';
+  rateField.hidden = t==='percentage';
+  rateField.querySelector('label').textContent = t==='per_mile' ? 'Pay Rate ($ per mile)' : 'Weekly Salary ($)';
+  document.getElementById('ent_insuranceWeekly').closest('.field').hidden = document.getElementById('ent_classification').value!=='owner_operator_1099';
+}
+
+/* ---------- CUSTOMERS ---------- */
+function renderCustomersPage(main){
+  main.innerHTML = `<div class="topbar"><div><h1>Customer Management</h1><div class="desc">Shippers, brokers, billing terms and load history</div></div>
+  <button class="btn" onclick="openCustomerModal()">+ Customer</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Contact</th><th>Email</th><th>Phone</th><th>Terms</th><th>Loads</th><th>Revenue</th><th></th></tr></thead>
+  <tbody>${DB.customers.map(c=>{
+    const cLoads = DB.loads.filter(l=>l.shipperId===c.id||l.brokerId===c.id);
+    const rev = cLoads.reduce((s,l)=>s+loadTotal(l),0);
+    return `<tr><td>${c.name}</td><td>${c.type}</td><td>${c.contact||'—'}</td><td>${c.email||'—'}</td><td>${c.phone||'—'}</td><td>${c.terms||'—'}</td><td>${cLoads.length}</td><td>${fmtMoney(rev)}</td>
+    <td><button class="btn small secondary" onclick="openCustomerModal('${c.id}')">Edit</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function openCustomerModal(id){
+  const c = id ? DB.customers.find(x=>x.id===id) : null;
+  openEntityModal(c?'Edit Customer':'Add Customer', '', [
+    {id:'name',label:'Company Name',span2:true},
+    {id:'type',label:'Type',type:'select',options:[{value:'shipper',label:'Shipper'},{value:'broker',label:'Broker'},{value:'both',label:'Both'}]},
+    {id:'terms',label:'Payment Terms'},{id:'contact',label:'Contact Name'},{id:'email',label:'Email'},{id:'phone',label:'Phone'},
+  ], c||{}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),type:g('type'),terms:g('terms'),contact:g('contact'),email:g('email'),phone:g('phone')};
+    if(c) Object.assign(c,data); else DB.customers.push({id:'cus'+Date.now(), ...data});
+    saveDB(); renderCustomersPage(document.getElementById('main'));
+  });
+}
+
+/* ---------- ACCOUNTING ---------- */
+function renderAccounting(main){
+  const revenue = DB.loads.filter(l=>l.status!=='cancelled').reduce((s,l)=>s+loadTotal(l),0);
+  const byCat = {};
+  DB.expenses.forEach(e=>{ byCat[e.category]=(byCat[e.category]||0)+e.amount; });
+  const expTotal = totalExpenses();
+  const invoiced = DB.loads.filter(l=>['invoiced','paid'].includes(l.status));
+  main.innerHTML = `<div class="topbar"><div><h1>Accounting</h1><div class="desc">Revenue, expenses, invoices and profit/loss</div></div>
+  <button class="btn" onclick="openExpenseModal()">+ Record Expense</button></div>
+  <div class="kpi-grid kpi3">
+    <div class="kpi good"><div class="lbl">Revenue</div><div class="stat-num">${fmtMoney(revenue)}</div><div class="sub">All loads booked, incl. accessorials</div></div>
+    <div class="kpi bad"><div class="lbl">Expenses</div><div class="stat-num">${fmtMoney(expTotal)}</div><div class="sub">${DB.expenses.length} entries</div></div>
+    <div class="kpi ${revenue-expTotal>=0?'good':'bad'}"><div class="lbl">Net Profit</div><div class="stat-num">${fmtMoney(revenue-expTotal)}</div><div class="sub">Revenue minus expenses</div></div>
+  </div>
+  <div class="dash-cols">
+    <div class="panel"><h3>Expenses by Category</h3>
+    ${Object.entries(byCat).map(([cat,amt])=>`<div class="row-item"><div class="t1">${cat.replace('_',' ')}</div><div>${fmtMoney(amt)}</div></div>`).join('') || '<div class="empty">No expenses recorded.</div>'}
+    </div>
+    <div class="panel"><h3>Invoices</h3>
+    ${invoiced.length ? invoiced.map(l=>`<div class="row-item"><div><div class="t1">${loadRef(l)} — ${custName(l.shipperId)}</div><div class="t2">${fmtMoney(loadTotal(l))}${loadTotal(l)!==l.rate?' (incl. '+fmtMoney(loadTotal(l)-l.rate)+' accessorials)':''}</div></div><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></div>`).join('') : '<div class="empty">No invoices yet.</div>'}
+    </div>
+  </div>`;
+}
+function openExpenseModal(){
+  openEntityModal('Record Expense', 'Fuel tied to a load is pre-filled when you run payroll for that load.', [
+    {id:'category',label:'Category',type:'select',options:[{value:'fuel',label:'Fuel'},{value:'tolls',label:'Tolls'},{value:'maintenance',label:'Maintenance'},{value:'driver_pay',label:'Driver Pay'},{value:'other',label:'Other'}]},
+    {id:'amount',label:'Amount ($)',type:'number'},
+    {id:'loadId',label:'Load (optional)',type:'select',span2:true,options:[{value:'',label:'— Not tied to a load —'},...DB.loads.map(l=>({value:l.id,label:loadRef(l)+' — '+l.pickupLoc+' → '+l.deliveryLoc}))]},
+    {id:'date',label:'Date',type:'date'},{id:'notes',label:'Description'},
+  ], {date:ymd(new Date())}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const amount = parseFloat(g('amount'));
+    if(!(amount>0)){ notify('Enter an amount greater than $0.'); return false; }
+    DB.expenses.push({id:'ex'+Date.now(), category:g('category'), amount, date:g('date'), loadId:g('loadId')||null, notes:g('notes')});
+    saveDB(); renderAccounting(document.getElementById('main'));
+  });
+}
+
+/* ---------- DOCUMENTS ---------- */
+function renderDocuments(main){
+  const rows = [];
+  DB.loads.forEach(l=>{
+    const names = new Set(loadFiles(l).map(f=>f.name));
+    loadFiles(l).forEach(f=>rows.push({category:'Load', type:DOC_TYPES[f.type]||f.type, related:loadRef(l), file:`<button class="btn small secondary" onclick="openFileViewer('${l.id}','${f.id}')">View</button> ${f.name} · ${fmtSize(f.size)}`}));
+    Object.entries(l.docs).forEach(([type,file])=>{ if(file && !names.has(file)) rows.push({category:'Load', type:DOC_TYPES[type]||type, related:loadRef(l), file}); });
+  });
+  DB.drivers.forEach(d=>{ rows.push({category:'Driver', type:'CDL', related:d.name, file:d.cdl}); rows.push({category:'Driver', type:'Medical Card', related:d.name, file:'expires '+fmtDateOnly(d.medExp)}); });
+  DB.trucks.forEach(t=>{ rows.push({category:'Truck', type:'Registration', related:t.unit, file:'expires '+fmtDateOnly(t.regExp)}); rows.push({category:'Truck', type:'Insurance', related:t.unit, file:'expires '+fmtDateOnly(t.insExp)}); });
+  main.innerHTML = `<div class="topbar"><div><h1>Document Center</h1><div class="desc">Every uploaded and on-file document across the company</div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Type</th><th>Related To</th><th>File / Detail</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr><td>${r.category}</td><td>${r.type}</td><td>${r.related}</td><td class="mono">${r.file}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ---------- PAYROLL ---------- */
+const SETTLED_STATUS_COLOR = {pending:['#4A3A1E','#F0C878'], paid:['#173A24','#5FE39A']};
+const TAX_RATES = {federal:0.12, state:0.04, fica:0.0765}; // simplified estimated withholding for W-2 drivers
+// Net of a load for split pay: amount − default dispatch fee − fuel logged to it
+function defaultLoadNet(load){ const amt = loadTotal(load); return amt - Math.round(amt*DEFAULT_DISPATCH_FEE_PCT)/100 - fuelForLoad(load.id); }
+function payForLoad(driver, load){
+  if(driver.payType==='percentage'){ const sp = SPLITS[driver.paySplit] || SPLITS['50_50']; return Math.round((sp.deduct ? defaultLoadNet(load) : loadTotal(load)) * sp.driver)/100; }
+  if(driver.payType==='per_mile') return load.miles * driver.payRate;
+  return 0; // salary handled outside per-load calc
+}
+function estimatedWithholding(driver, gross){
+  if(driver.classification!=='w2_employee') return 0; // 1099 owner-operators handle their own taxes
+  const rate = TAX_RATES.federal + TAX_RATES.state + TAX_RATES.fica;
+  return Math.round(gross * rate * 100)/100;
+}
+function settledLoadIds(){ const s=new Set(); DB.settlements.forEach(st=>st.loadIds.forEach(id=>s.add(id))); return s; }
+function unsettledLoadsFor(driverId){
+  const settled = settledLoadIds();
+  return DB.loads.filter(l=> l.driverId===driverId && ['delivered','documents_pending','invoiced','paid'].includes(l.status) && !settled.has(l.id));
+}
+function payDesc(d){ return d.payType==='per_mile' ? '$'+d.payRate+'/mi' : d.payType==='percentage' ? (d.paySplit==='30_70' ? '30/70 split, no deductions' : d.paySplit==='oo' ? 'Owner-op: 100% minus dispatch, fuel & insurance' : '50/50 split after fee & fuel') : fmtMoney(d.payRate)+'/wk salary'; }
+// percentage (split) pay is taken from the load's full amount, so accessorials are already inside it
+function loadPay(d,l){ return d.payType==='percentage' ? payForLoad(d,l) : payForLoad(d,l) + (l.detention||0) + (l.layover||0); }
+// Drivers settled with the fee / fuel / split sheet: every 1099 owner-operator, and anyone paid a percentage of the load
+function usesSplitSheet(d){ return !!d && (d.classification==='owner_operator_1099' || d.payType==='percentage'); }
+function defaultSplitFor(d){ return d.payType==='percentage' ? (SPLITS[d.paySplit] ? d.paySplit : '50_50') : (d.defaultSplit!==undefined ? d.defaultSplit : (isOwnerOp(d) ? 'oo' : '50_50')); }
+function ymd(dt){ const p=n=>String(n).padStart(2,'0'); return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}`; }
+function round2(n){ return Math.round(n*100)/100; }
+function renderPayroll(main){
+  const rows = DB.drivers.map(d=>{
+    const loads = unsettledLoadsFor(d.id);
+    const gross = loads.reduce((s,l)=>s+loadPay(d,l),0);
+    return {driver:d, loads, gross};
+  });
+  const totalGrossOwed = rows.reduce((s,r)=>s+r.gross,0);
+  const totalPaidYtd = DB.settlements.filter(s=>s.status==='paid').reduce((s,st)=>s+st.net,0);
+  const pending = DB.settlements.filter(s=>s.status==='pending');
+  const history = [...DB.settlements].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  main.innerHTML = `
+  <div class="topbar"><div><h1>Payroll</h1><div class="desc">Driver settlements — W-2 withholding &amp; 1099 owner-operator statements</div></div>
+    <button class="btn" onclick="openPayrollModal()">+ Run Payroll</button></div>
+  <div class="kpi-grid kpi3">
+    <div class="kpi warn"><div class="lbl">Unsettled Load Pay</div><div class="stat-num">${fmtMoney(totalGrossOwed)}</div><div class="sub">Across ${rows.filter(r=>r.loads.length).length} driver(s)</div></div>
+    <div class="kpi good"><div class="lbl">Paid Out</div><div class="stat-num">${fmtMoney(totalPaidYtd)}</div><div class="sub">${DB.settlements.filter(s=>s.status==='paid').length} settlement(s)</div></div>
+    <div class="kpi"><div class="lbl">Pending Settlements</div><div class="stat-num">${pending.length}</div><div class="sub">${fmtMoney(pending.reduce((s,x)=>s+x.net,0))} net awaiting payment</div></div>
+  </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>Driver Pay Summary</h3>
+    ${rows.map(r=>{
+      const cls = r.driver.classification==='w2_employee' ? 'W-2' : '1099 Owner-Op';
+      const inactive = r.driver.status==='terminated';
+      return `<div class="row-item"><div><div class="t1">${r.driver.name} <span class="t2">(${cls})</span></div><div class="t2">${payDesc(r.driver)} · ${r.loads.length} completed load(s) unsettled</div></div>
+      <div style="display:flex;align-items:center;gap:10px;"><b>${fmtMoney(r.gross)}</b>${inactive?'':`<button class="btn small" onclick="openPayrollModal('${r.driver.id}')">Create Settlement</button>`}</div></div>`;
+    }).join('')}
+  </div>
+  <div class="panel">
+    <h3>Settlement History</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Driver</th><th>Period</th><th>Loads</th><th>Gross</th><th>Taxes</th><th>Other Ded.</th><th>Net Pay</th><th>Status</th><th></th></tr></thead>
+    <tbody>${history.map(s=>{
+      const d = DB.drivers.find(x=>x.id===s.driverId);
+      return `<tr><td>${d?d.name:'—'}</td><td>${fmtDateOnly(s.periodStart+'T12:00')} – ${fmtDateOnly(s.periodEnd+'T12:00')}</td><td>${s.loadIds.length}</td><td>${fmtMoney(s.gross)}</td><td>${fmtMoney(s.taxWithholding||0)}</td><td>${fmtMoney(s.deductions)}</td><td><b>${fmtMoney(s.net)}</b></td>
+      <td>${pillColor(...SETTLED_STATUS_COLOR[s.status], s.status)}</td>
+      <td><div style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openPayStub('${s.id}')">View Stub</button>${s.status==='pending'?`<button class="btn small" onclick="markSettlementPaid('${s.id}')">Mark Paid</button><button class="btn small secondary" onclick="voidSettlement('${s.id}')">Void</button>`:''}</div></td></tr>`;
+    }).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--dim);padding:20px;">No settlements yet.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+
+/* ---- Run Payroll form ---- */
+function openPayrollModal(driverId){
+  const drivers = DB.drivers.filter(d=>d.status!=='terminated');
+  if(!drivers.length){ notify('Add a driver first.'); return; }
+  const sel = document.getElementById('pr_driver');
+  sel.innerHTML = drivers.map(d=>{ const n = unsettledLoadsFor(d.id).length; return `<option value="${d.id}">${d.name} — ${d.classification==='w2_employee'?'W-2 · '+payDesc(d):'1099 owner-operator'} · ${n} load${n===1?'':'s'} to pay</option>`; }).join('');
+  if(driverId && drivers.find(d=>d.id===driverId)) sel.value = driverId;
+  else {
+    const waiting = drivers.filter(d=>unsettledLoadsFor(d.id).length);
+    const pick = waiting.find(isOwnerOp) || waiting[0];
+    if(pick) sel.value = pick.id;
+  }
+  const end = new Date(), start = new Date(); start.setDate(end.getDate()-6);
+  document.getElementById('pr_start').value = ymd(start);
+  document.getElementById('pr_end').value = ymd(end);
+  document.getElementById('pr_bonus').value = 0;
+  document.getElementById('pr_deductions').value = 0;
+  document.getElementById('pr_notes').value = '';
+  prDriverChanged();
+  document.getElementById('payrollOverlay').classList.add('open');
+}
+function closePayrollModal(){ document.getElementById('payrollOverlay').classList.remove('open'); }
+function prDriver(){ return DB.drivers.find(x=>x.id===document.getElementById('pr_driver').value); }
+function isOwnerOp(d){ return !!d && d.classification==='owner_operator_1099'; }
+function splitOptions(sel, d){
+  return Object.entries(SPLITS).filter(([k,v])=>!v.ownerOnly || isOwnerOp(d)).map(([k,v])=>`<option value="${k}" ${sel===k?'selected':''}>${v.label}</option>`).join('') + `<option value="" ${!sel?'selected':''}>Pay rate</option>`;
+}
+function prDriverChanged(){
+  const d = prDriver();
+  const op = usesSplitSheet(d);
+  const loads = unsettledLoadsFor(d.id);
+  const def = op ? defaultSplitFor(d) : '';
+  prInsDirty = false;
+  document.getElementById('pr_splitAllWrap').style.display = op && loads.length ? '' : 'none';
+  document.getElementById('pr_splitAll').innerHTML =
+    (isOwnerOp(d) ? '<option value="oo">Owner-Op — driver keeps 100% minus 12% dispatch, fuel &amp; insurance</option>' : '') +
+    '<option value="50_50">50/50 — after dispatch fee &amp; fuel</option><option value="30_70">30/70 — driver 30 / company 70, no deductions</option><option value="">No split — driver\'s pay rate</option>';
+  document.getElementById('pr_splitAll').value = def;
+  if(!loads.length){
+    document.getElementById('pr_loads').innerHTML = `<div class="empty">${op ? 'This 1099 driver has no delivered loads waiting to be paid. Once a load assigned to them is marked Delivered, it appears here with its dispatch fee, fuel and split.' : d.payType==='salary' ? 'No unsettled loads — salary for the period will still be paid.' : 'No completed loads waiting to be paid for this driver. You can still pay a bonus or reimbursement below.'}</div>`;
+    return prRecalc();
+  }
+  const head = op
+    ? '<th></th><th>Load #</th><th>Route</th><th>Amount</th><th>Dispatch Fee</th><th>Fuel ($)</th><th>Net</th><th>Split</th><th>Driver Pay</th><th>Company</th>'
+    : '<th></th><th>Load #</th><th>Route</th><th>Amount</th><th>Pay Basis</th><th>Driver Pay</th>';
+  document.getElementById('pr_loads').innerHTML = `<div class="table-wrap"><table class="pr-sheet" style="min-width:${op?940:600}px;"><thead><tr>${head}</tr></thead><tbody>` +
+    loads.map(l=>{
+      const logged = fuelForLoad(l.id), acc = loadTotal(l)-l.rate;
+      const common = `<td class="pr-pick" data-label="Include in this settlement"><input type="checkbox" class="pr-load" value="${l.id}" checked onchange="prRecalc()" style="width:16px;height:16px;accent-color:var(--accent);"></td>
+        <td class="mono pr-id" data-label="Load #">${l.id}${l.loadNumber?'<div>#'+l.loadNumber+'</div>':''}</td>
+        <td class="pr-route" data-label="Route" style="white-space:normal;min-width:150px;">${l.pickupLoc} → ${l.deliveryLoc}<div class="mono">Delivered ${fmtDateOnly(l.deliveryAt)} · ${l.miles} mi</div></td>
+        <td data-label="Amount">${fmtMoney2(loadTotal(l))}${acc?'<div class="mono">incl. '+fmtMoney(acc)+' acc.</div>':''}</td>`;
+      if(!op) return `<tr data-id="${l.id}">${common}<td class="mono" data-label="Pay basis">${payDesc(d)}${(l.detention||l.layover)?' + det./layover':''}</td><td data-label="Driver pay"><b id="pr_pay_${l.id}"></b></td></tr>`;
+      return `<tr data-id="${l.id}">${common}
+        <td data-label="Dispatch fee"><div style="display:flex;align-items:center;gap:4px;"><input type="number" class="pr-in pr-fee" value="${DEFAULT_DISPATCH_FEE_PCT}" min="0" step="0.5" oninput="prRecalc()" style="width:60px;">%</div><div class="mono" id="pr_fee_${l.id}"></div></td>
+        <td data-label="Fuel ($)"><input type="number" class="pr-in pr-fuel" value="${logged?round2(logged):''}" min="0" placeholder="0.00" oninput="prRecalc()" style="width:90px;">${logged?'<div class="mono">logged '+fmtMoney(logged)+'</div>':''}</td>
+        <td data-label="Net (after fee &amp; fuel)" id="pr_net_${l.id}"></td>
+        <td data-label="Split (driver / company)"><select class="pr-in pr-split" onchange="prRecalc()">${splitOptions(def, d)}</select></td>
+        <td data-label="Driver pay" class="pr-paycell"><b id="pr_pay_${l.id}"></b></td>
+        <td data-label="Company share" id="pr_co_${l.id}"></td></tr>`;
+    }).join('') + `</tbody><tfoot><tr id="pr_totals"></tr></tfoot></table></div>`;
+  prRecalc();
+}
+function prApplySplitAll(){
+  const v = document.getElementById('pr_splitAll').value;
+  document.querySelectorAll('.pr-split').forEach(sel=>sel.value=v);
+  prRecalc();
+}
+// One settlement line per load, read from the sheet
+function prLine(d, l){
+  const tr = document.querySelector(`#pr_loads tr[data-id="${l.id}"]`);
+  const amount = round2(loadTotal(l));
+  const base = {loadId:l.id, loadNumber:l.loadNumber||'', route:`${l.pickupLoc} → ${l.deliveryLoc}`, amount};
+  if(!usesSplitSheet(d)) return {...base, pay:round2(loadPay(d,l)), basis:payDesc(d)};
+  const split = tr.querySelector('.pr-split').value;
+  if(!SPLITS[split]) return {...base, split:'', pay:round2(loadPay(d,l)), basis:payDesc(d)};
+  const deduct = SPLITS[split].deduct;
+  const feePct = deduct ? Math.max(0, parseFloat(tr.querySelector('.pr-fee').value)||0) : 0;
+  const fee = round2(amount*feePct/100);
+  const fuel = deduct ? round2(Math.max(0, parseFloat(tr.querySelector('.pr-fuel').value)||0)) : 0;
+  const net = round2(amount-fee-fuel);
+  const pay = round2(net*SPLITS[split].driver/100);
+  const company = split==='oo' ? fee : round2(net-pay); // on owner-op loads the company earns the dispatch fee
+  return {...base, split, deduct, feePct, fee, fuel, net, pay, company, basis: split==='oo' ? 'Owner-op (100% after dispatch & fuel)' : `${SPLITS[split].label} split${deduct?'':', no deductions'}`};
+}
+// Insurance: owner-operator's weekly amount × weeks in the period, taken when any Owner-Op load is paid
+let prInsDirty = false;
+function prAutoInsurance(){
+  const d = prDriver(); const wrap = document.getElementById('pr_insWrap'); const inp = document.getElementById('pr_insurance');
+  wrap.hidden = !isOwnerOp(d);
+  if(!isOwnerOp(d)){ inp.value = 0; return; }
+  const anyOO = [...document.querySelectorAll('#pr_loads tr[data-id]')].some(tr=>tr.querySelector('.pr-load').checked && tr.querySelector('.pr-split') && tr.querySelector('.pr-split').value==='oo');
+  const st = document.getElementById('pr_start').value, en = document.getElementById('pr_end').value;
+  const days = (st && en) ? Math.round((new Date(en)-new Date(st))/86400000)+1 : 0;
+  const weeks = days>0 ? round2(days/7) : 0;
+  document.getElementById('pr_insHint').textContent = anyOO ? `(${fmtMoney(d.insuranceWeekly||0)}/week × ${weeks} week${weeks===1?'':'s'})` : '(only on Owner-Op loads)';
+  if(!prInsDirty) inp.value = anyOO ? round2((d.insuranceWeekly||0)*weeks) : 0;
+}
+function prCompute(){
+  const d = prDriver();
+  const ids = [...document.querySelectorAll('.pr-load:checked')].map(c=>c.value);
+  const loads = ids.map(id=>DB.loads.find(l=>l.id===id)).filter(Boolean);
+  const lines = loads.map(l=>prLine(d,l));
+  const startStr = document.getElementById('pr_start').value, endStr = document.getElementById('pr_end').value;
+  const days = (startStr && endStr) ? Math.round((new Date(endStr) - new Date(startStr))/86400000) + 1 : 0;
+  const loadEarnings = round2(lines.reduce((s,x)=>s+x.pay,0));
+  const salary = d.payType==='salary' && days>0 ? round2(d.payRate * days/7) : 0;
+  const bonus = parseFloat(document.getElementById('pr_bonus').value)||0;
+  const deductions = parseFloat(document.getElementById('pr_deductions').value)||0;
+  const gross = round2(loadEarnings + salary + bonus);
+  const tax = estimatedWithholding(d, gross);
+  const insurance = isOwnerOp(d) ? Math.max(0, parseFloat(document.getElementById('pr_insurance').value)||0) : 0;
+  const net = round2(gross - tax - insurance - deductions);
+  return {d, loads, lines, startStr, endStr, days, loadEarnings, salary, bonus, insurance, deductions, gross, tax, net};
+}
+function prRecalc(){
+  prAutoInsurance();
+  const c = prCompute();
+  const op = usesSplitSheet(c.d);
+  // per-row cells (every row, ticked or not, so the sheet always reads right)
+  document.querySelectorAll('#pr_loads tr[data-id]').forEach(tr=>{
+    const l = DB.loads.find(x=>x.id===tr.dataset.id); const x = prLine(c.d,l);
+    const on = tr.querySelector('.pr-load').checked;
+    tr.style.opacity = on ? '1' : '.45';
+    document.getElementById('pr_pay_'+l.id).textContent = fmtMoney2(x.pay);
+    if(op){
+      const splitOn = !!x.split;
+      tr.querySelectorAll('.pr-fee,.pr-fuel').forEach(i=>i.disabled=!(splitOn && x.deduct));
+      document.getElementById('pr_fee_'+l.id).textContent = !splitOn ? 'not deducted' : x.deduct ? '−'+fmtMoney2(x.fee) : 'none on 30/70';
+      document.getElementById('pr_net_'+l.id).innerHTML = splitOn ? fmtMoney2(x.net) : '<span class="mono">—</span>';
+      document.getElementById('pr_co_'+l.id).innerHTML = splitOn ? fmtMoney2(x.company) : '<span class="mono">—</span>';
+    }
+  });
+  const tot = document.getElementById('pr_totals');
+  if(tot){
+    const sum = k => fmtMoney2(c.lines.reduce((s,x)=>s+(x[k]||0),0));
+    tot.innerHTML = op
+      ? `<td class="pr-empty"></td><td colspan="2" class="pr-tot-title">Total (${c.lines.length} load${c.lines.length===1?'':'s'})</td><td data-label="Amount">${sum('amount')}</td><td data-label="Dispatch fees">−${sum('fee')}</td><td data-label="Fuel">−${sum('fuel')}</td><td data-label="Net">${sum('net')}</td><td class="pr-empty"></td><td data-label="Driver pay">${sum('pay')}</td><td data-label="Company share">${sum('company')}</td>`
+      : `<td class="pr-empty"></td><td colspan="2" class="pr-tot-title">Total (${c.lines.length} load${c.lines.length===1?'':'s'})</td><td data-label="Amount">${sum('amount')}</td><td class="pr-empty"></td><td data-label="Driver pay">${sum('pay')}</td>`;
+  }
+  const line = (label,val,strong)=>`<div class="row-item"${strong?' style="font-size:16px;"':''}><div class="t1">${label}</div>${strong?'<b>'+val+'</b>':'<div>'+val+'</div>'}</div>`;
+  let warn = '';
+  if(c.days<=0) warn = 'Period end must be on or after the start date.';
+  else if(c.gross<=0) warn = 'Nothing to pay yet — select a load, or enter a bonus/reimbursement.';
+  else if(c.net<0) warn = 'Deductions are larger than pay after taxes — net pay would be negative.';
+  else if(c.lines.some(x=>x.net<0)) warn = 'A load has a negative net — dispatch fee plus fuel is more than the load amount.';
+  document.getElementById('pr_summary').innerHTML =
+    line(`Load pay (${c.lines.length} load${c.lines.length===1?'':'s'})`, fmtMoney2(c.loadEarnings)) +
+    (c.d.payType==='salary' ? line(`Salary (${c.days} day${c.days===1?'':'s'} at ${fmtMoney(c.d.payRate)}/wk)`, fmtMoney2(c.salary)) : '') +
+    (c.bonus ? line('Bonus / reimbursements', fmtMoney2(c.bonus)) : '') +
+    line('Gross pay', fmtMoney2(c.gross)) +
+    line(c.d.classification==='w2_employee' ? 'Est. tax withholding (fed 12% · state 4% · FICA 7.65%)' : 'Tax withholding (1099 — none withheld)', '-'+fmtMoney2(c.tax)) +
+    (isOwnerOp(c.d) ? line('Insurance', '-'+fmtMoney2(c.insurance)) : '') +
+    line('Other deductions', '-'+fmtMoney2(c.deductions)) +
+    line('Net pay', fmtMoney2(c.net), true) +
+    (warn ? `<div style="color:var(--warn);font-size:12.5px;margin-top:10px;">${warn}</div>` : '');
+}
+function fmtMoney2(n){ return (n<0?'-':'') + '$' + Math.abs(Number(n||0)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function savePayroll(){
+  const c = prCompute();
+  if(c.days<=0){ notify('Period end must be on or after the start date.'); return; }
+  if(c.gross<=0){ notify('Nothing to pay — select at least one load or enter a bonus/reimbursement.'); return; }
+  if(c.net<0){ notify('Net pay would be negative. Reduce the deductions.'); return; }
+  if(c.lines.some(x=>x.net<0)){ notify('A load has a negative net — check its dispatch fee and fuel.'); return; }
+  const now = new Date().toISOString();
+  // Fuel entered on the sheet becomes the load's fuel expense, so Accounting matches the settlement
+  c.lines.filter(x=>x.split && x.deduct && Math.abs(x.fuel - fuelForLoad(x.loadId))>0.005).forEach(x=>{
+    DB.expenses = DB.expenses.filter(e=>!(e.loadId===x.loadId && e.category==='fuel'));
+    if(x.fuel>0) DB.expenses.push({id:'ex'+Date.now()+x.loadId, category:'fuel', amount:x.fuel, loadId:x.loadId, date:c.endStr, notes:`Fuel — ${x.loadId}${x.loadNumber?' #'+x.loadNumber:''} (from payroll)`});
+  });
+  if(isOwnerOp(c.d) && c.d.payType!=='percentage' && c.lines.length) c.d.defaultSplit = document.getElementById('pr_splitAll').value;
+  DB.settlements.push({
+    id:'st'+Date.now(), driverId:c.d.id, loadIds:c.loads.map(l=>l.id), lines:c.lines,
+    periodStart:c.startStr, periodEnd:c.endStr,
+    loadPay:c.loadEarnings, salary:c.salary, bonus:c.bonus,
+    gross:c.gross, taxWithholding:c.tax, insurance:c.insurance, deductions:c.deductions, net:c.net,
+    notes:document.getElementById('pr_notes').value.trim(),
+    status:'pending', createdAt:now, paidAt:null,
+  });
+  saveDB(); closePayrollModal(); renderPayroll(document.getElementById('main'));
+}
+function voidSettlement(id){
+  askConfirm('Void this pending settlement? Its loads go back to unsettled so they can be paid again.', 'Void Settlement', ()=>{
+    DB.settlements = DB.settlements.filter(s=>s.id!==id);
+    saveDB(); renderPayroll(document.getElementById('main'));
+  });
+}
+function markSettlementPaid(id){
+  const s = DB.settlements.find(x=>x.id===id); s.status='paid'; s.paidAt=new Date().toISOString();
+  saveDB(); renderPayroll(document.getElementById('main'));
+}
+function openPayStub(id){
+  const s = DB.settlements.find(x=>x.id===id);
+  const d = DB.drivers.find(x=>x.id===s.driverId);
+  const loads = s.loadIds.map(lid=>DB.loads.find(l=>l.id===lid)).filter(Boolean);
+  document.getElementById('stubBody').innerHTML = `
+    <h2 style="margin-bottom:2px;">Drive Mode Logistics</h2>
+    <div class="modal-sub">Pay Statement — ${d?d.name:'—'} (${d&&d.classification==='w2_employee'?'W-2 Employee':'1099 Owner-Operator'})</div>
+    <div class="row-item"><div class="t1">Period</div><div>${fmtDateOnly(s.periodStart+'T12:00')} – ${fmtDateOnly(s.periodEnd+'T12:00')}</div></div>
+    ${d?`<div class="row-item"><div class="t1">Pay basis</div><div>${(s.lines||[]).length && (s.lines||[]).every(x=>x.split==='oo') ? 'Owner-operator: 100% minus 12% dispatch, fuel & insurance' : (s.lines||[]).some(x=>x.split) ? 'Percentage split (see each load below)' : payDesc(d)}</div></div>`:''}
+    <div class="section-divider" style="margin-top:16px;">Earnings</div>
+    ${(()=>{
+      const lines = s.lines || loads.map(l=>({loadId:l.id, loadNumber:l.loadNumber||'', route:`${l.pickupLoc} → ${l.deliveryLoc}`, amount:loadTotal(l), pay:(s.loadPays&&s.loadPays[l.id]!=null)?s.loadPays[l.id]:(d?loadPay(d,l):0)}));
+      if(!lines.length) return '';
+      const anySplit = lines.some(x=>x.split);
+      if(!anySplit) return lines.map(x=>`<div class="row-item"><div><div class="t1">${x.loadId}${x.loadNumber?' · #'+x.loadNumber:''}</div><div class="t2">${x.route}</div></div><div>${fmtMoney2(x.pay)}</div></div>`).join('');
+      const sum = k => fmtMoney2(lines.reduce((t,x)=>t+(x[k]||0),0));
+      return `<div class="table-wrap" style="border:none;margin:6px 0 4px;"><table style="min-width:0;font-size:12.5px;"><thead><tr><th>Load #</th><th>Amount</th><th>Disp. Fee</th><th>Fuel</th><th>Net</th><th>Split</th><th>Driver Pay</th></tr></thead><tbody>
+        ${lines.map(x=>`<tr><td>${x.loadId}${x.loadNumber?'<div class="t2">#'+x.loadNumber+'</div>':''}</td><td>${fmtMoney2(x.amount)}</td>
+          <td>${x.split && x.deduct!==false ?'−'+fmtMoney2(x.fee)+' <span class="t2">('+x.feePct+'%)</span>':'—'}</td><td>${x.split && x.deduct!==false ?'−'+fmtMoney2(x.fuel):'—'}</td><td>${x.split?fmtMoney2(x.net):'—'}</td>
+          <td>${x.split?SPLITS[x.split].label:'Pay rate'}</td><td><b>${fmtMoney2(x.pay)}</b></td></tr>`).join('')}
+        <tr><td><b>Total</b></td><td><b>${sum('amount')}</b></td><td><b>−${sum('fee')}</b></td><td><b>−${sum('fuel')}</b></td><td><b>${sum('net')}</b></td><td></td><td><b>${sum('pay')}</b></td></tr>
+      </tbody></table></div>`;
+    })()}
+    ${s.salary?`<div class="row-item"><div class="t1">Salary</div><div>${fmtMoney2(s.salary)}</div></div>`:''}
+    ${s.bonus?`<div class="row-item"><div class="t1">Bonus / reimbursements</div><div>${fmtMoney2(s.bonus)}</div></div>`:''}
+    <div class="section-divider">Summary</div>
+    <div class="row-item"><div class="t1">Gross Pay</div><div>${fmtMoney2(s.gross)}</div></div>
+    <div class="row-item"><div class="t1">Tax Withholding</div><div>-${fmtMoney2(s.taxWithholding||0)}</div></div>
+    ${s.insurance ? `<div class="row-item"><div class="t1">Insurance</div><div>-${fmtMoney2(s.insurance)}</div></div>` : ''}
+    <div class="row-item"><div class="t1">Other Deductions</div><div>-${fmtMoney2(s.deductions)}</div></div>
+    <div class="row-item" style="font-size:16px;"><div class="t1">Net Pay</div><b>${fmtMoney2(s.net)}</b></div>
+    <div class="row-item"><div class="t1">Status</div>${pillColor(...SETTLED_STATUS_COLOR[s.status], s.status)}</div>
+    ${s.notes?`<div class="row-item"><div class="t1">Notes</div><div>${s.notes}</div></div>`:''}
+  `;
+  document.getElementById('stubOverlay').classList.add('open');
+}
+function closeStub(){ document.getElementById('stubOverlay').classList.remove('open'); }
+
+/* ---------- USER MANAGEMENT ---------- */
+const ROLE_OPTIONS_LONG = [
+  {value:'owner_admin',label:'Owner / Admin — Full access'},
+  {value:'dispatcher',label:'Dispatcher — Manage loads & assignments'},
+  {value:'accounting',label:'Accounting — Revenue & invoices'},
+  {value:'safety',label:'Safety — Compliance & alerts'},
+  {value:'driver',label:'Driver — Driver portal access'},
+  {value:'customer',label:'Customer — Customer portal access'},
+];
+function linkFields(){
+  return [
+    {id:'driverId',label:'Linked Driver (driver role)',type:'select',options:[{value:'',label:'— None —'},...DB.drivers.map(d=>({value:d.id,label:d.name}))]},
+    {id:'customerId',label:'Linked Customer (customer role)',type:'select',options:[{value:'',label:'— None —'},...DB.customers.map(c=>({value:c.id,label:c.name}))]},
+  ];
+}
+function userLinkLabel(u){
+  if(u.role==='driver') return u.driverId ? driverName(u.driverId) : '<span style="color:var(--warn)">Not linked</span>';
+  if(u.role==='customer') return u.customerId ? custName(u.customerId) : '<span style="color:var(--warn)">Not linked</span>';
+  return '—';
+}
+function validateLink(role, driverId, customerId){
+  if(role==='driver' && !driverId) return 'Driver accounts need a linked driver profile.';
+  if(role==='customer' && !customerId) return 'Customer accounts need a linked customer company.';
+  return null;
+}
+function renderUsers(main){
+  main.innerHTML = `<div class="topbar"><div><h1>User Management</h1><div class="desc">Create accounts, manage roles and permissions</div></div>
+  <button class="btn" onclick="openCreateUserModal()">+ New User</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Linked To</th><th>Status</th><th>Created</th><th></th></tr></thead>
+  <tbody>${DB.users.map(u=>`<tr><td>${u.name}</td><td>${u.email}</td><td><span class="pill" style="background:var(--panel2);color:var(--text)">${u.role.replace('_',' / ')}</span></td>
+    <td>${userLinkLabel(u)}</td>
+    <td>${u.active?'<span class="pill" style="background:#173A24;color:#5FE39A">Active</span>':'<span class="pill" style="background:#3B1E1E;color:#E5555C">Inactive</span>'}</td><td>${u.createdAt ? fmtDateOnly(u.createdAt) : 'System'}</td>
+    <td><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button></td></tr>`).join('')}</tbody></table></div>`;
+}
+function openCreateUserModal(){
+  openEntityModal('Create New User Account', 'Add a team member with role-based access', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'email',label:'Email Address',span2:true},
+    {id:'password',label:'Temporary Password (min. 8 characters)',type:'password',span2:true},
+    {id:'role',label:'Role',type:'select',span2:true,options:ROLE_OPTIONS_LONG},
+    ...linkFields(),
+  ], {}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const name = g('name').trim();
+    const email = g('email').trim().toLowerCase();
+    const password = g('password');
+    const role = g('role');
+    const driverId = g('driverId') || null, customerId = g('customerId') || null;
+    if(!name || !email){ notify('Name and email are required.'); return false; }
+    if(password.length < 8){ notify('Temporary password must be at least 8 characters.'); return false; }
+    if(DB.users.find(u=>u.email.toLowerCase()===email)){ notify('A user with that email already exists.'); return false; }
+    const linkErr = validateLink(role, driverId, customerId);
+    if(linkErr){ notify(linkErr); return false; }
+    DB.users.push({
+      id:'u'+Date.now(), email, name, role, active:true, password,
+      driverId: role==='driver' ? driverId : null,
+      customerId: role==='customer' ? customerId : null,
+      createdAt:new Date().toISOString(),
+    });
+    saveDB();
+    renderUsers(document.getElementById('main'));
+    notify(`User created. ${name} can sign in now as ${email} with the temporary password you set.`, 'ok');
+  });
+}
+function openEditUserModal(id){
+  const u = DB.users.find(x=>x.id===id);
+  if(!u) return;
+  openEntityModal(`Edit User — ${u.name}`, 'Leave the password blank to keep the current one.', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'role',label:'Role',type:'select',options:ROLE_OPTIONS_LONG},
+    {id:'active',label:'Status',type:'select',options:[{value:true,label:'Active'},{value:false,label:'Inactive'}]},
+    ...linkFields(),
+    {id:'password',label:'Reset Password (optional)',type:'password',span2:true,placeholder:'New password'},
+  ], {name:u.name, role:u.role, active:u.active, driverId:u.driverId||'', customerId:u.customerId||''}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const role = g('role');
+    const driverId = g('driverId') || null, customerId = g('customerId') || null;
+    const newPw = g('password');
+    const active = g('active')==='true';
+    if(!g('name').trim()){ notify('Name is required.'); return false; }
+    if(newPw && newPw.length < 8){ notify('New password must be at least 8 characters.'); return false; }
+    const linkErr = validateLink(role, driverId, customerId);
+    if(linkErr){ notify(linkErr); return false; }
+    if(currentUser && u.id===currentUser.id && (!active || role!=='owner_admin')){
+      notify("You can't deactivate your own account or remove your own admin role."); return false;
+    }
+    u.name = g('name').trim();
+    u.role = role;
+    u.active = active;
+    u.driverId = role==='driver' ? driverId : null;
+    u.customerId = role==='customer' ? customerId : null;
+    if(newPw) u.password = newPw;
+    saveDB();
+    renderUsers(document.getElementById('main'));
+  });
+}
+
+renderLogin();
+</script>
+</body>
+</html>
