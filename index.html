@@ -2340,7 +2340,7 @@ function renderAuth(view, ctx){
   }
   else if(view==='setup'){
     card.innerHTML = authShell('First-time setup — create the Owner / Admin account', `${msg}
-      <p class="auth-p">No accounts exist yet. The account you create here becomes the <b>Owner / Admin</b>. After that, new people can only join by invitation from the Users page.</p>
+      <p class="auth-p">No accounts exist yet. The account you create here becomes the <b>Owner / Admin</b>. After that, only you can add people, from the Users page.</p>
       <div class="field" style="margin-bottom:12px;"><label>Your Name</label><input id="setupName" autocomplete="name"></div>
       <div class="field" style="margin-bottom:12px;"><label>Email</label><input id="setupEmail" type="email" autocomplete="username"></div>
       <div class="field" style="margin-bottom:12px;"><label>Password (min 8 characters)</label><input id="setupPw" type="password" autocomplete="new-password"></div>
@@ -2370,6 +2370,7 @@ async function submitForgot(){
   const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: appUrl()});
   if(error && /rate limit|too many|security purposes/i.test(error.message)){ authBusy(false); err.textContent = 'Too many reset emails were requested. Wait a few minutes and try again.'; return; }
   if(error && /fetch|network/i.test(error.message)){ authBusy(false); err.textContent = friendlyError(error); return; }
+  if(error && /sending|smtp|unexpected|not accepted/i.test(error.message)){ authBusy(false); err.textContent = 'Password reset emails aren’t available right now. Ask your Drive Mode administrator to set a new password for you.'; return; }
   renderAuth('forgot', {email, sent:true});   // same answer whether or not the account exists
 }
 async function submitNewPassword(){
@@ -2391,10 +2392,16 @@ async function submitSetup(){
   if(pw.length < 8){ err.textContent = 'Password must be at least 8 characters.'; return; }
   if(pw !== pw2){ err.textContent = 'Passwords do not match.'; return; }
   authBusy(true);
-  const {data, error} = await sb.auth.signUp({email, password: pw, options:{data:{name}, emailRedirectTo: appUrl()}});
-  if(error){ authBusy(false); err.textContent = authErrorText(error); return; }
-  if(data && data.session) return enterApp();
-  renderAuth('confirm', {email});
+  // create the Owner / Admin account directly (no confirmation email needed)
+  const {data, error} = await sb.functions.invoke('admin-users', {body:{action:'bootstrap', name, email, password: pw}});
+  if(error || (data && data.error)){
+    let msg = (data && data.error) || (error && error.message);
+    try{ const j = await error.context.json(); if(j && j.error) msg = j.error; }catch(_){}
+    authBusy(false); err.textContent = msg || 'Could not create the account.'; return;
+  }
+  const {error:se} = await sb.auth.signInWithPassword({email, password: pw});
+  if(se){ authBusy(false); err.textContent = authErrorText(se); return; }
+  await enterApp();
 }
 
 /* ---------- IMPORT data saved in this browser by the old version ---------- */
@@ -2469,7 +2476,7 @@ function renderUsers(main){
   const legacy = legacyData(); let imported = false; try{ imported = localStorage.getItem(LEGACY_KEY+'_import')==='done'; }catch(e){}
   const showImport = legacy && !imported && legacyCounts(legacy).length;
   main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>User Management</h1><div class="desc">Invite people and manage roles and access</div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn secondary" onclick="refreshUsers()">↻ Refresh</button><button class="btn" onclick="openCreateUserModal()">+ Invite User</button></div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn secondary" onclick="refreshUsers()">↻ Refresh</button><button class="btn" onclick="openCreateUserModal()">+ Add User</button></div></div>
   <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Linked To</th><th>Status</th><th>Last Sign-in</th><th></th></tr></thead>
   <tbody>${DB.users.map(u=>`<tr style="cursor:default;"><td>${esc(u.name)}${u.id===currentUser?.id?' <span style="color:var(--dim);font-size:11px;">(you)</span>':''}</td><td>${esc(u.email)}</td>
     <td><span class="pill" style="background:var(--panel2);color:var(--text)">${ROLE_NAMES[u.role]||esc(u.role)}</span></td>
@@ -2477,7 +2484,7 @@ function renderUsers(main){
     <td>${userStatusPill(u)}</td>
     <td>${u.lastSignInAt ? fmtDateOnly(u.lastSignInAt) : '<span style="color:var(--dim)">Never</span>'}</td>
     <td style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button>${u.id!==currentUser?.id && u.active && !u.confirmedAt ? `<button class="btn small secondary" title="Resend the invitation email" onclick="resendInvite('${u.id}', this)">Resend</button>` : ''}${u.id !== currentUser?.id ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteUser('${u.id}')">Delete</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">No users yet.</td></tr>'}</tbody></table></div>
-  <p class="auth-p" style="margin-top:14px;font-size:12.5px;">Invited people get an email from Supabase with a link to set their password. Until they open it, they show as “Invitation sent”.</p>`;
+  <p class="auth-p" style="margin-top:14px;font-size:12.5px;">If someone forgets their password, click <b>Edit</b> on their row and set a new one. People you emailed an invitation show as “Invitation sent” until they open it.</p>`;
 }
 async function refreshUsers(){
   try{ await loadUsers(); renderUsers(document.getElementById('main')); }catch(e){ alert(friendlyError(e)); }
@@ -2497,25 +2504,45 @@ function linkFields(){
   ];
 }
 function openCreateUserModal(){
-  openEntityModal('Invite User', 'They’ll get an email with a link to set their own password and sign in.', [
+  openEntityModal('Add User', 'Create a login for a team member, driver or customer.', [
     {id:'name',label:'Full Name',span2:true},
-    {id:'email',label:'Email Address',span2:true},
+    {id:'email',label:'Email Address (their username)',span2:true},
     {id:'role',label:'Role',type:'select',span2:true,options:ROLE_OPTIONS_LONG},
     ...linkFields(),
-  ], {role:'dispatcher'}, async ()=>{
+    {id:'method',label:'How will they get their password?',type:'select',span2:true,options:[{value:'password',label:'I’ll set a password now and give it to them (no email needed)'},{value:'invite',label:'Email them an invitation to set their own password'}]},
+    {id:'password',label:'Password (min 8 characters)',type:'password'},
+    {id:'password2',label:'Confirm Password',type:'password'},
+  ], {role:'dispatcher', method:'password'}, async ()=>{
     const g = k => document.getElementById('ent_'+k).value;
-    const name = g('name').trim(), email = g('email').trim().toLowerCase(), role = g('role');
+    const name = g('name').trim(), email = g('email').trim().toLowerCase(), role = g('role'), method = g('method');
     if(!name || !email){ alert('Enter a name and email.'); return false; }
     if(!EMAIL_RE.test(email)){ alert('Enter a valid email address, like name@company.com'); return false; }
     if(DB.users.some(u=>u.email.toLowerCase()===email)){ alert('An account with that email already exists.'); return false; }
     if(role==='driver' && !g('driverId') && !confirm('No driver record is linked, so this person will see an empty driver portal until you link one under Edit.\n\nSend the invitation anyway?')) return false;
     if(role==='customer' && !g('customerId') && !confirm('No customer record is linked, so this person will see an empty customer portal until you link one under Edit.\n\nSend the invitation anyway?')) return false;
+    if(method==='password'){
+      const pw = g('password');
+      if(pw.length < 8){ alert('Password must be at least 8 characters.'); return false; }
+      if(pw !== g('password2')){ alert('Passwords do not match.'); return false; }
+      try{ await callAdmin('create', {name, email, role, password:pw, driverId:g('driverId')||null, customerId:g('customerId')||null}); }
+      catch(e){ alert('✗ Account not created.\n\n' + e.message); return false; }
+      await refreshUsers();
+      alert(`✓ Account created for ${name}.\n\nThey sign in at ${appUrl()} with:\nEmail: ${email}\nPassword: the one you just set\n\nShare the password with them privately (text or phone call).`);
+      return;
+    }
     try{
       await callAdmin('invite', {name, email, role, driverId:g('driverId')||null, customerId:g('customerId')||null});
     }catch(e){ alert('✗ Invitation not sent.\n\n' + e.message); return false; }
     await refreshUsers();
     alert(`✉ Invitation sent to ${email}.\n\nThey’ll get an email with a link to set their password and sign in. Ask them to check spam if it doesn’t arrive.`);
   });
+  document.getElementById('ent_method').onchange = toggleNewUserMethod; toggleNewUserMethod();
+}
+
+function toggleNewUserMethod(){
+  const m = document.getElementById('ent_method'); if(!m) return;
+  const show = m.value==='password';
+  ['ent_password','ent_password2'].forEach(id=>{ const f = document.getElementById(id); if(f) f.closest('.field').style.display = show ? '' : 'none'; });
 }
 function openEditUserModal(id){
   const u = DB.users.find(x=>x.id===id);
