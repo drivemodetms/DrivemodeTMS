@@ -30,6 +30,13 @@ h1,h2,h3,.logo,.stat-num{font-family:'Big Shoulders Display',system-ui,sans-seri
 .login-logo .mark{width:14px;height:34px;background:var(--accent);border-radius:3px; transform:skewX(-12deg);}
 .login-logo span{font-size:30px; font-weight:800; letter-spacing:0.5px;}
 .login-sub{color:var(--dim); font-size:14px; margin-bottom:28px;}
+.auth-err{color:var(--danger);font-size:12.5px;min-height:16px;margin:2px 0 12px;}
+.auth-links{display:flex;justify-content:space-between;gap:12px;margin-top:16px;font-size:13px;}
+.auth-links a{color:var(--accent);text-decoration:none;} .auth-links a:hover{text-decoration:underline;}
+.auth-p{color:var(--dim);font-size:13.5px;line-height:1.5;margin:0 0 16px;} .auth-p b{color:var(--text);}
+.auth-msg{font-size:12.5px;line-height:1.5;border-radius:8px;padding:10px 12px;margin-bottom:14px;border:1px solid var(--border);}
+.auth-msg.demo{background:#2A2013;border-color:#4A3220;color:#F0C878;} .auth-msg.bad{background:#3B1E1E;border-color:#5a2a2a;color:#F09B9B;} .auth-msg.good{background:#173A24;border-color:#24563a;color:#5FE39A;}
+.code-input{letter-spacing:8px;font-size:20px !important;text-align:center;font-family:ui-monospace,monospace !important;}
 .login-foot{margin-top:26px; font-size:12px; color:var(--dim); line-height:1.6;}
 
 /* ---------- APP SHELL ---------- */
@@ -172,15 +179,7 @@ tbody tr:hover{background:var(--panel2); cursor:pointer;}
 
 <!-- ================= LOGIN ================= -->
 <div id="login">
-  <div class="login-card">
-    <div class="login-logo"><div class="mark"></div><span>Drive Mode TMS</span></div>
-    <div class="login-sub">DriveModeTMS.com — sign in to your account</div>
-
-    <div class="field" style="margin-bottom:12px;"><label>Email</label><input id="loginEmail" type="email" placeholder="you@drivemodetms.com" onkeydown="if(event.key==='Enter')attemptLogin()"></div>
-    <div class="field" style="margin-bottom:6px;"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')attemptLogin()"></div>
-    <div id="loginError" style="color:var(--danger);font-size:12.5px;min-height:16px;margin:2px 0 12px;"></div>
-    <button class="btn" style="width:100%;" onclick="attemptLogin()">Sign In</button>
-  </div>
+  <div class="login-card" id="authCard"></div>
 </div>
 
 <!-- ================= APP ================= -->
@@ -329,6 +328,7 @@ function seedData(){
       {id:'u6', email:'customer@drivemodetms.com', name:'Lisa Customer', password:'Customer123!', role:'customer', customerId:'cus1', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
     ],
     documents:[],
+    emailConfig:{enabled:false, serviceId:'', templateId:'', publicKey:'', fromName:'Drive Mode Logistics'},
   };
 }
 
@@ -350,6 +350,8 @@ function loadDB(){
       if(d.payRate===undefined) d.payRate = seedMatch.payRate;
     });
   }
+  // migrate: strip stray spaces saved in emails/passwords by older versions
+  (data.users||[]).forEach(u=>{ if(typeof u.email==='string') u.email = u.email.trim().toLowerCase(); if(typeof u.password==='string') u.password = u.password.trim(); });
   // migrate: link demo portal users to their records
   (data.users||[]).forEach(u=>{
     const su = seed.users.find(x=>x.id===u.id && x.email===u.email);
@@ -375,21 +377,24 @@ let editingLoadId = null;
 
 /* ---------- LOGIN ---------- */
 function renderLogin(){
+  renderAuth('signin');
   document.getElementById('login').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
 }
 function attemptLogin(){
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const password = document.getElementById('loginPassword').value;
+  const password = document.getElementById('loginPassword').value.trim();
   const errEl = document.getElementById('loginError');
   if(!email || !password){ errEl.textContent = 'Enter your email and password.'; return; }
 
   // Check against DB users only
-  const user = DB.users.find(u=>u.email.toLowerCase()===email && u.password===password && u.active);
-
-  if(!user){ errEl.textContent = 'Incorrect email or password.'; return; }
+  const account = DB.users.find(u=>String(u.email||'').trim().toLowerCase()===email);
+  if(!account){ errEl.innerHTML = 'No account with that email in this browser.<br><span style="color:var(--dim)">Accounts are saved in the browser where they were created.</span>'; return; }
+  if(String(account.password||'').trim()!==password){ errEl.textContent = 'Incorrect password.'; return; }
+  if(!account.active){ errEl.textContent = 'This account is deactivated. Ask an admin to reactivate it.'; return; }
   errEl.textContent = '';
-  login(user);
+  if(account.emailVerified === false) return startVerification(account);
+  login(account);
 }
 function login(user){
   currentRole = user.role;
@@ -404,7 +409,7 @@ function login(user){
 }
 function logout(){
   currentRole=null; currentUser=null;
-  document.getElementById('loginEmail').value=''; document.getElementById('loginPassword').value=''; document.getElementById('loginError').textContent='';
+  renderAuth('signin');
   document.getElementById('login').style.display='flex';
   document.getElementById('app').style.display='none';
 }
@@ -2087,14 +2092,194 @@ function submitEditDocument(docId){
   renderDocuments(document.getElementById('main'));
 }
 
+/* ---------- EMAIL DELIVERY + VERIFICATION + PASSWORD RESET ---------- */
+const CODE_TTL_MIN = 15, CODE_MAX_TRIES = 5;
+function emailCfg(){ return DB.emailConfig || {}; }
+function emailLive(){ const c = emailCfg(); return !!(c.enabled && c.serviceId && c.templateId && c.publicKey); }
+function genCode(){ const a = new Uint32Array(1); crypto.getRandomValues(a); return String(a[0] % 1000000).padStart(6,'0'); }
+async function sendEmail(to, subject, message){
+  if(!emailLive()) return {ok:true, demo:true};
+  const c = emailCfg();
+  try{
+    const r = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({service_id:c.serviceId, template_id:c.templateId, user_id:c.publicKey,
+        template_params:{to_email:to, subject, message, app_name:'Drive Mode TMS', from_name:c.fromName||'Drive Mode TMS'}})
+    });
+    if(!r.ok) return {ok:false, error: (await r.text().catch(()=>'')) || ('HTTP '+r.status)};
+    return {ok:true};
+  }catch(e){ return {ok:false, error:String(e.message||e)}; }
+}
+// purpose: 'verify' | 'reset'
+async function issueCode(user, purpose){
+  const code = genCode();
+  user[purpose+'Code'] = code;
+  user[purpose+'Expires'] = Date.now() + CODE_TTL_MIN*60000;
+  user[purpose+'Tries'] = 0;
+  saveDB();
+  const subject = purpose==='verify' ? 'Verify your Drive Mode TMS email' : 'Reset your Drive Mode TMS password';
+  const message = purpose==='verify'
+    ? `Hi ${user.name},\n\nYour Drive Mode TMS verification code is: ${code}\n\nIt expires in ${CODE_TTL_MIN} minutes. If you didn't expect this, you can ignore this email.`
+    : `Hi ${user.name},\n\nYour Drive Mode TMS password reset code is: ${code}\n\nIt expires in ${CODE_TTL_MIN} minutes. If you didn't ask to reset your password, ignore this email — your password won't change.`;
+  const res = await sendEmail(user.email, subject, message);
+  return {...res, code};
+}
+function checkCode(user, purpose, entered){
+  const code = user[purpose+'Code'], exp = user[purpose+'Expires'];
+  if(!code || !exp) return 'Request a new code.';
+  if(Date.now() > exp) return 'This code has expired. Request a new one.';
+  if((user[purpose+'Tries']||0) >= CODE_MAX_TRIES) return 'Too many wrong attempts. Request a new code.';
+  if(String(entered).trim() !== code){ user[purpose+'Tries'] = (user[purpose+'Tries']||0)+1; saveDB(); return `Incorrect code. ${CODE_MAX_TRIES-user[purpose+'Tries']} tries left.`; }
+  delete user[purpose+'Code']; delete user[purpose+'Expires']; delete user[purpose+'Tries'];
+  return null;
+}
+function findUserByEmail(email){ const e = String(email||'').trim().toLowerCase(); return DB.users.find(u=>String(u.email||'').trim().toLowerCase()===e); }
+function maskEmail(e){ const [n,d] = String(e).split('@'); return (n.length<=2 ? n[0]+'*' : n.slice(0,2)+'*'.repeat(Math.min(6,n.length-2))) + '@' + d; }
+function deliveryNote(res){
+  if(!res) return '';
+  if(res.info) return `<div class="auth-msg bad">${esc(res.info)}</div>`;
+  if(!res.ok) return `<div class="auth-msg bad">Couldn't send the email: ${esc(res.error)}. Ask an admin to check Email Delivery settings.</div>`;
+  if(res.demo) return `<div class="auth-msg demo"><b>Demo mode</b> — email isn't set up yet, so the code is shown here: <span class="mono" style="font-size:15px;color:var(--text);letter-spacing:2px;">${res.code}</span></div>`;
+  return '';
+}
+
+/* ---- auth screens (sign in / verify / forgot / reset) ---- */
+let authState = {view:'signin'};
+function authShell(sub, body){
+  return `<div class="login-logo"><div class="mark"></div><span>Drive Mode TMS</span></div>
+  <div class="login-sub">${sub}</div>${body}`;
+}
+function renderAuth(view, ctx){
+  authState = Object.assign({view}, ctx||{});
+  const card = document.getElementById('authCard');
+  const enter = fn => `onkeydown="if(event.key==='Enter')${fn}()"`;
+  if(view==='signin'){
+    card.innerHTML = authShell('DriveModeTMS.com — sign in to your account', `
+      ${authState.notice ? `<div class="auth-msg good">${authState.notice}</div>` : ''}
+      <div class="field" style="margin-bottom:12px;"><label>Email</label><input id="loginEmail" type="email" autocomplete="username" placeholder="you@drivemodetms.com" value="${esc(authState.email||'')}" ${enter('attemptLogin')}></div>
+      <div class="field" style="margin-bottom:6px;"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" ${enter('attemptLogin')}></div>
+      <div id="loginError" class="auth-err"></div>
+      <button class="btn" style="width:100%;" onclick="attemptLogin()">Sign In</button>
+      <div class="auth-links"><a href="#" onclick="event.preventDefault(); renderAuth('forgot',{email:document.getElementById('loginEmail').value})">Forgot password?</a></div>`);
+  }
+  else if(view==='verify'){
+    const u = DB.users.find(x=>x.id===authState.userId);
+    card.innerHTML = authShell('Verify your email', `
+      <p class="auth-p">We sent a 6-digit code to <b>${esc(maskEmail(u.email))}</b>. Enter it to finish signing in.</p>
+      ${deliveryNote(authState.sendResult)}
+      <div class="field" style="margin-bottom:6px;"><label>Verification Code</label><input id="authCode" class="code-input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" ${enter('submitVerify')}></div>
+      <div id="authErr" class="auth-err"></div>
+      <button class="btn" style="width:100%;" onclick="submitVerify()">Verify &amp; Sign In</button>
+      <div class="auth-links"><a href="#" onclick="event.preventDefault(); resendVerify()">Resend code</a><a href="#" onclick="event.preventDefault(); renderAuth('signin')">Back to sign in</a></div>`);
+  }
+  else if(view==='forgot'){
+    card.innerHTML = authShell('Reset your password', `
+      <p class="auth-p">Enter your account email and we'll send you a code to reset your password.</p>
+      <div class="field" style="margin-bottom:6px;"><label>Email</label><input id="forgotEmail" type="email" placeholder="you@company.com" value="${esc(authState.email||'')}" ${enter('submitForgot')}></div>
+      <div id="authErr" class="auth-err"></div>
+      <button class="btn" style="width:100%;" onclick="submitForgot()">Send Reset Code</button>
+      <div class="auth-links"><a href="#" onclick="event.preventDefault(); renderAuth('signin')">Back to sign in</a></div>`);
+  }
+  else if(view==='reset'){
+    card.innerHTML = authShell('Choose a new password', `
+      <p class="auth-p">If an account exists for <b>${esc(authState.email)}</b>, we sent it a 6-digit code.</p>
+      ${deliveryNote(authState.sendResult)}
+      <div class="field" style="margin-bottom:12px;"><label>Reset Code</label><input id="authCode" class="code-input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"></div>
+      <div class="field" style="margin-bottom:12px;"><label>New Password (min 8 characters)</label><input id="resetPw" type="password" autocomplete="new-password"></div>
+      <div class="field" style="margin-bottom:6px;"><label>Confirm New Password</label><input id="resetPw2" type="password" autocomplete="new-password" ${enter('submitReset')}></div>
+      <div id="authErr" class="auth-err"></div>
+      <button class="btn" style="width:100%;" onclick="submitReset()">Reset Password</button>
+      <div class="auth-links"><a href="#" onclick="event.preventDefault(); submitForgot(authState.email)">Resend code</a><a href="#" onclick="event.preventDefault(); renderAuth('signin')">Back to sign in</a></div>`);
+  }
+  const first = card.querySelector('input'); if(first) setTimeout(()=>first.focus(),0);
+}
+function authBusy(on){ document.querySelectorAll('#authCard .btn').forEach(b=>{ b.disabled=on; b.style.opacity=on?.6:1; }); }
+
+async function startVerification(user){
+  authBusy(true);
+  const res = await issueCode(user, 'verify');
+  renderAuth('verify', {userId:user.id, sendResult:res});
+}
+function submitVerify(){
+  const u = DB.users.find(x=>x.id===authState.userId); if(!u) return renderAuth('signin');
+  const err = checkCode(u, 'verify', document.getElementById('authCode').value);
+  if(err){ document.getElementById('authErr').textContent = err; return; }
+  u.emailVerified = true; u.emailVerifiedAt = new Date().toISOString(); saveDB();
+  login(u);
+}
+async function resendVerify(){
+  const u = DB.users.find(x=>x.id===authState.userId); if(!u) return renderAuth('signin');
+  await startVerification(u);
+  if(authState.sendResult?.ok && !authState.sendResult.demo){ const e=document.getElementById('authErr'); e.style.color='var(--accent2)'; e.textContent='A new code was sent.'; }
+}
+async function submitForgot(prefill){
+  const email = (prefill || document.getElementById('forgotEmail')?.value || '').trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ const e=document.getElementById('authErr'); if(e) e.textContent='Enter a valid email address.'; return; }
+  authBusy(true);
+  const u = findUserByEmail(email);
+  let res = null;
+  if(u && u.active) res = await issueCode(u, 'reset');
+  // Same screen whether or not the account exists, so the form can't be used to discover accounts.
+  // In demo mode there's no inbox, so the code (or a "no account" hint) is shown instead.
+  if(!u && !emailLive()) res = {info:'Demo mode: there is no account with that email in this browser. Check the spelling, or ask an admin to create the account.'};
+  if(u && !u.active) res = emailLive() ? null : {info:'Demo mode: this account is deactivated. Ask an admin to reactivate it.'};
+  renderAuth('reset', {email, sendResult:res});
+}
+function submitReset(){
+  const e = document.getElementById('authErr');
+  const pw = document.getElementById('resetPw').value.trim(), pw2 = document.getElementById('resetPw2').value.trim();
+  const u = findUserByEmail(authState.email);
+  if(!u || !u.active){ e.textContent = 'Incorrect code.'; return; }
+  if(pw.length < 8){ e.textContent = 'Password must be at least 8 characters.'; return; }
+  if(pw !== pw2){ e.textContent = 'Passwords do not match.'; return; }
+  const err = checkCode(u, 'reset', document.getElementById('authCode').value);
+  if(err){ e.textContent = err; return; }
+  u.password = pw; u.emailVerified = true; u.emailVerifiedAt = u.emailVerifiedAt || new Date().toISOString(); u.passwordChangedAt = new Date().toISOString();
+  saveDB();
+  renderAuth('signin', {email:u.email, notice:'Password updated. Sign in with your new password.'});
+}
+
+/* ---- admin: email delivery settings + verification tools ---- */
+function openEmailSettings(){
+  const c = emailCfg();
+  openEntityModal('Email Delivery', 'Sends verification and password-reset codes through EmailJS (emailjs.com). Your EmailJS template must use {{to_email}} as the recipient and {{subject}} and {{message}} in the email.', [
+    {id:'enabled',label:'Status',type:'select',options:[{value:'false',label:'Off — demo mode (codes shown on screen)'},{value:'true',label:'On — send real emails'}],span2:true},
+    {id:'serviceId',label:'EmailJS Service ID'},{id:'templateId',label:'EmailJS Template ID'},
+    {id:'publicKey',label:'EmailJS Public Key',span2:true},
+    {id:'fromName',label:'From Name',span2:true},
+    {id:'testTo',label:'Send a test email to (optional)',span2:true},
+  ], {enabled:String(!!c.enabled), serviceId:c.serviceId||'', templateId:c.templateId||'', publicKey:c.publicKey||'', fromName:c.fromName||'Drive Mode Logistics', testTo:currentUser?.email||''}, ()=>{
+    const g = k => document.getElementById('ent_'+k).value.trim();
+    const cfg = {enabled:g('enabled')==='true', serviceId:g('serviceId'), templateId:g('templateId'), publicKey:g('publicKey'), fromName:g('fromName')};
+    if(cfg.enabled && (!cfg.serviceId || !cfg.templateId || !cfg.publicKey)){ alert('Enter the Service ID, Template ID and Public Key to turn email on.'); return false; }
+    DB.emailConfig = cfg; saveDB();
+    const to = g('testTo');
+    if(cfg.enabled && to){
+      sendEmail(to, 'Drive Mode TMS test email', 'This is a test from Drive Mode TMS. Email delivery is working.').then(r=>{
+        alert(r.ok ? `✓ Test email sent to ${to}` : `✗ Test email failed: ${r.error}`);
+      });
+    }
+    renderUsers(document.getElementById('main'));
+  });
+}
+async function adminSendVerification(userId){
+  const u = DB.users.find(x=>x.id===userId); if(!u) return;
+  const r = await issueCode(u, 'verify');
+  if(!r.ok) alert(`Couldn't send: ${r.error}`);
+  else alert(r.demo ? `Demo mode — no email sent.\nThe user will be asked for a code the next time they sign in.` : `✓ Verification code sent to ${u.email}`);
+  renderUsers(document.getElementById('main'));
+}
+
 /* ---------- USER MANAGEMENT ---------- */
 function renderUsers(main){
   main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>User Management</h1><div class="desc">Create accounts, manage roles and permissions</div></div>
-  <button class="btn" onclick="openCreateUserModal()">+ New User</button></div>
-  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn secondary" onclick="openEmailSettings()">✉ Email Delivery: ${emailLive()?'On':'Demo'}</button><button class="btn" onclick="openCreateUserModal()">+ New User</button></div></div>
+  ${!emailLive() ? '<div class="auth-msg demo" style="margin-bottom:16px;">Email delivery is in <b>demo mode</b>: verification and password-reset codes are shown on screen instead of emailed. Click “Email Delivery” to connect EmailJS.</div>' : ''}
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Email Verified</th><th>Status</th><th>Created</th><th></th></tr></thead>
   <tbody>${DB.users.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td><span class="pill" style="background:var(--panel2);color:var(--text)">${u.role.replace('_',' / ')}</span></td>
+    <td>${u.emailVerified===false ? pillColor('#4A3A1E','#F0C878','Unverified') : pillColor('#173A24','#5FE39A','Verified')}</td>
     <td>${u.active?'<span class="pill" style="background:#173A24;color:#5FE39A">Active</span>':'<span class="pill" style="background:#3B1E1E;color:#E5555C">Inactive</span>'}</td><td>${u.createdAt ? fmtDateOnly(u.createdAt) : 'System'}</td>
-    <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button>${currentUser && currentUser.role === 'owner_admin' && u.id !== currentUser.id ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteUser('${u.id}')">Delete</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button>${u.emailVerified===false && emailLive() ? `<button class="btn small secondary" onclick="adminSendVerification('${u.id}')">Send Code</button>` : ''}${currentUser && currentUser.role === 'owner_admin' && u.id !== currentUser.id ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteUser('${u.id}')">Delete</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function openCreateUserModal(){
   openEntityModal('Create New User Account', 'Add a team member with role-based access', [
@@ -2114,22 +2299,24 @@ function openCreateUserModal(){
     {id:'customerId',label:'Linked Customer (for Customer role)',type:'select',options:[{value:'',label:'— None —'},...DB.customers.map(c=>({value:c.id,label:c.name}))]},
   ], {}, ()=>{
     const g=k=>document.getElementById('ent_'+k).value;
-    const email = g('email').toLowerCase();
-    const password = g('password');
-    const confirmPassword = g('confirmPassword');
+    const email = g('email').trim().toLowerCase();
+    const password = g('password').trim();
+    const confirmPassword = g('confirmPassword').trim();
 
-    if(!g('name') || !email || !password) { alert('All fields required'); return false; }
+    if(!g('name').trim() || !email || !password) { alert('All fields required'); return false; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('Enter a valid email address, like name@company.com'); return false; }
     if(password.length < 8) { alert('Password must be at least 8 characters'); return false; }
     if(password !== confirmPassword) { alert('Passwords do not match'); return false; }
-    if(DB.users.find(u=>u.email.toLowerCase()===email)) { alert('Email already exists'); return false; }
+    if(DB.users.find(u=>String(u.email||'').trim().toLowerCase()===email)) { alert('Email already exists'); return false; }
 
     const now = new Date().toISOString();
     DB.users.push({
       id:'u'+Date.now(),
       email,
-      name:g('name'),
+      name:g('name').trim(),
       password,
       role:g('role'),
+      emailVerified:false,
       driverId:g('driverId')||null,
       customerId:g('customerId')||null,
       active:true,
@@ -2137,7 +2324,7 @@ function openCreateUserModal(){
     });
     saveDB();
     renderUsers(document.getElementById('main'));
-    alert(`✅ User Created!\n\nEmail: ${email}\nPassword: (the one you just set)\n\nShare these credentials securely with the user.`);
+    alert(`✅ User Created!\n\nEmail: ${email}\nPassword: (the one you just set)\n\nThe first time they sign in, they'll be asked for a 6-digit code ${emailLive()?'emailed to '+email:'(demo mode: shown on screen until Email Delivery is set up)'} to verify their email.`);
   });
 }
 function openEditUserModal(id){
@@ -2154,12 +2341,18 @@ function openEditUserModal(id){
       {value:'customer',label:'Customer'},
     ]},
     {id:'active',label:'Status',type:'select',options:[{value:true,label:'Active'},{value:false,label:'Inactive'}]},
+    {id:'newPassword',label:'New Password (leave blank to keep current)',type:'password',span2:true},
+    {id:'emailVerified',label:'Email Verified',type:'select',options:[{value:'true',label:'Verified'},{value:'false',label:'Not verified — ask for a code at next sign-in'}]},
     {id:'driverId',label:'Linked Driver (for Driver role)',type:'select',options:[{value:'',label:'— None —'},...DB.drivers.map(d=>({value:d.id,label:d.name}))]},
     {id:'customerId',label:'Linked Customer (for Customer role)',type:'select',options:[{value:'',label:'— None —'},...DB.customers.map(c=>({value:c.id,label:c.name}))]},
-  ], {name:u.name, role:u.role, active:u.active, driverId:u.driverId||'', customerId:u.customerId||''}, ()=>{
+  ], {name:u.name, role:u.role, active:u.active, emailVerified:String(u.emailVerified!==false), driverId:u.driverId||'', customerId:u.customerId||''}, ()=>{
     const g=k=>document.getElementById('ent_'+k).value;
-    u.name = g('name');
+    const np = (g('newPassword')||'').trim();
+    if(np && np.length < 8){ alert('New password must be at least 8 characters'); return false; }
+    if(np) u.password = np;
+    u.name = g('name').trim();
     u.role = g('role');
+    if(u.id!==currentUser?.id) u.emailVerified = g('emailVerified')==='true';
     u.active = g('active')==='true' || g('active')===true;
     u.driverId = g('driverId')||null;
     u.customerId = g('customerId')||null;
@@ -2187,4 +2380,3 @@ renderLogin();
 </script>
 </body>
 </html>
-
