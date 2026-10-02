@@ -393,7 +393,7 @@ const NAV_BY_ROLE = {
   dispatcher:[['dashboard','Dashboard'],['dispatch','Dispatch'],['loadboard','Load Board'],['fleet','Fleet'],['drivers','Drivers'],['documents','Documents']],
   accounting:[['dashboard','Dashboard'],['accounting','Accounting'],['factoring','Factoring'],['drivers','Drivers'],['customers','Customers'],['documents','Documents']],
   safety:[['dashboard','Dashboard'],['drivers','Drivers'],['fleet','Fleet']],
-  driver:[['myloads','My Loads'],['history','Completed Loads']],
+  driver:[['myloads','My Loads'],['history','Completed Loads'],['mypaystubs','My Paystubs']],
   customer:[['customerloads','My Shipments'],['invoices','Invoices']],
 };
 const LOCKED_LABEL = {fleet:'Fleet Management', drivers:'Driver Management', customers:'Customer Management', accounting:'Accounting', documents:'Document Center'};
@@ -759,6 +759,99 @@ function driverUpdateStatus(id, status){
 }
 function driverUploadDoc(id, type){
   const l = DB.loads.find(x=>x.id===id); l.docs[type] = `${type}_${id}_mobile.jpg`; saveDB(); renderDriverLoads(document.getElementById('main'), false);
+}
+
+/* ---------- DRIVER PAYSTUBS ---------- */
+function renderDriverPaystubs(main){
+  const myId = 'drv1'; // demo driver: Marcus Reyes
+  const driver = DB.drivers.find(d=>d.id===myId);
+  const myPaystubs = DB.w2Payrolls.filter(p=>p.driverId===myId);
+
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>My Paystubs</h1><div class="desc">Marcus Reyes — W-2 Payroll History</div></div></div>
+  <div class="card-list">${myPaystubs.length? myPaystubs.map(p=>`
+    <div class="load-card">
+      <div class="lc-top"><span class="pill st-${p.status==='paid'?'paid':p.status==='approved'?'dispatched':'at_pickup'}">${p.status}</span><span class="mono">${p.id}</span></div>
+      <div class="lc-route">Pay Period: ${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</div>
+      <div class="lc-meta">
+        <span>Regular: ${p.regularHours}h</span><span>Overtime: ${p.overtimeHours}h</span><span>Status: ${p.status}</span>
+      </div>
+
+      <div style="margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">Gross Wages</div>
+            <div style="font-weight:700;font-size:16px;color:var(--accent);">${fmtMoney(p.grossWages)}</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">Net Pay</div>
+            <div style="font-weight:700;font-size:16px;color:var(--accent2);">${fmtMoney(p.netPay)}</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;font-size:12px;color:var(--dim);">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Federal Tax:</span><span>${fmtMoney(p.federalIncome)}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>FICA:</span><span>${fmtMoney(p.socialSecurity + p.medicare)}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Benefits/Deductions:</span><span>${fmtMoney(p.healthInsurance + p.dentalInsurance + p.visionInsurance + p.retirement401k)}</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn small secondary" onclick="openPaystubDetail('${p.id}')">View Full Details</button>
+      </div>
+    </div>`
+  ).join('') : '<div class="empty">No paystubs yet. Check back after payroll is processed.</div>'}
+  </div>`;
+}
+
+function openPaystubDetail(payrollId){
+  const p = DB.w2Payrolls.find(x=>x.id===payrollId);
+  if(!p) { alert('Paystub not found'); return; }
+  const d = DB.drivers.find(x=>x.id===p.driverId);
+  if(!d) { alert('Driver not found'); return; }
+  const totalTaxes = p.federalIncome + p.socialSecurity + p.medicare + p.stateIncome + p.localTaxes;
+  const totalDeduct = p.healthInsurance + p.dentalInsurance + p.visionInsurance + p.retirement401k + p.otherDeductions;
+
+  document.getElementById('main').innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('mypaystubs')">← Back to Paystubs</button><h1>Paystub Details</h1><div class="desc">${d.name} (${d.employeeId}) · ${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</div></div></div>
+
+  <div class="dash-cols">
+    <div class="panel">
+      <h3>Gross Wages</h3>
+      <div class="row-item"><div class="t1">Regular Hours (${p.regularHours}h)</div><div>${fmtMoney(p.regularHours * d.hourlyRate)}</div></div>
+      <div class="row-item"><div class="t1">Overtime Hours (${p.overtimeHours}h)</div><div>${fmtMoney(p.overtimeHours * d.overtimeRate)}</div></div>
+      <div class="row-item"><div class="t1">Mileage Pay</div><div>${fmtMoney(p.milesPay)}</div></div>
+      <div class="row-item"><div class="t1">Percentage Pay</div><div>${fmtMoney(p.percentagePay)}</div></div>
+      <div class="row-item"><div class="t1">Bonuses</div><div>${fmtMoney(p.bonuses)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Reimbursements</div><div>${fmtMoney(p.reimbursements)}</div></div>
+      <div class="row-item" style="font-weight:700;font-size:16px;"><div class="t1">GROSS WAGES</div><div style="color:var(--accent);">${fmtMoney(p.grossWages)}</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>Deductions</h3>
+      <div class="row-item"><div class="t1">Federal Income Tax</div><div>${fmtMoney(p.federalIncome)}</div></div>
+      <div class="row-item"><div class="t1">Social Security (6.2%)</div><div>${fmtMoney(p.socialSecurity)}</div></div>
+      <div class="row-item"><div class="t1">Medicare (1.45%)</div><div>${fmtMoney(p.medicare)}</div></div>
+      <div class="row-item"><div class="t1">State Income Tax</div><div>${fmtMoney(p.stateIncome)}</div></div>
+      <div class="row-item" style="border-bottom:1px solid var(--border);"><div class="t1">Local Taxes</div><div>${fmtMoney(p.localTaxes)}</div></div>
+      <div class="row-item" style="color:var(--dim);font-size:12px;"><div class="t1">Subtotal Taxes</div><div>${fmtMoney(totalTaxes)}</div></div>
+
+      <div class="row-item" style="margin-top:12px;"><div class="t1">Health Insurance</div><div>${fmtMoney(p.healthInsurance)}</div></div>
+      <div class="row-item"><div class="t1">Dental Insurance</div><div>${fmtMoney(p.dentalInsurance)}</div></div>
+      <div class="row-item"><div class="t1">Vision Insurance</div><div>${fmtMoney(p.visionInsurance)}</div></div>
+      <div class="row-item"><div class="t1">401k Contribution</div><div>${fmtMoney(p.retirement401k)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Other Deductions</div><div>${fmtMoney(p.otherDeductions)}</div></div>
+      <div class="row-item" style="font-weight:700;font-size:16px;"><div class="t1">TOTAL DEDUCTIONS</div><div style="color:var(--danger);">${fmtMoney(totalTaxes + totalDeduct)}</div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="text-align:center;padding:24px;margin-top:16px;background:var(--panel2);border-radius:12px;">
+    <div style="font-size:14px;color:var(--dim);margin-bottom:8px;">NET PAY</div>
+    <div style="font-size:40px;font-weight:700;color:var(--accent2);">${fmtMoney(p.netPay)}</div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+      <span class="pill" style="background:${p.status==='paid'?'#1B3B27':'#4A3A1E'};color:${p.status==='paid'?'#5FE39A':'var(--accent)'};padding:8px 16px;">Status: ${p.status}</span>
+    </div>
+  </div>
+  `;
 }
 
 /* ---------- CUSTOMER PORTAL ---------- */
@@ -1387,7 +1480,7 @@ function submitPayrollRun(){
     DB.w2Payrolls.push(newPayroll);
   });
 
-  saveData();
+  saveDB();
   document.querySelector('.modal').remove();
   alert('Payroll run created for '+selected.length+' employee(s)');
   renderW2Payroll(document.getElementById('main'));
