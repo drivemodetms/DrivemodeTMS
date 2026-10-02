@@ -352,6 +352,8 @@ function loadDB(){
   }
   // migrate: strip stray spaces saved in emails/passwords by older versions
   (data.users||[]).forEach(u=>{ if(typeof u.email==='string') u.email = u.email.trim().toLowerCase(); if(typeof u.password==='string') u.password = u.password.trim(); });
+  // migrate: email verification removed — clear leftover flags/codes
+  (data.users||[]).forEach(u=>{ ['emailVerified','emailVerifiedAt','verifyCode','verifyExpires','verifyTries'].forEach(k=>delete u[k]); });
   // migrate: link demo portal users to their records
   (data.users||[]).forEach(u=>{
     const su = seed.users.find(x=>x.id===u.id && x.email===u.email);
@@ -393,7 +395,6 @@ function attemptLogin(){
   if(String(account.password||'').trim()!==password){ errEl.textContent = 'Incorrect password.'; return; }
   if(!account.active){ errEl.textContent = 'This account is deactivated. Ask an admin to reactivate it.'; return; }
   errEl.textContent = '';
-  if(account.emailVerified === false) return startVerification(account);
   login(account);
 }
 function login(user){
@@ -2092,11 +2093,29 @@ function submitEditDocument(docId){
   renderDocuments(document.getElementById('main'));
 }
 
-/* ---------- EMAIL DELIVERY + VERIFICATION + PASSWORD RESET ---------- */
+/* ---------- EMAIL DELIVERY + PASSWORD RESET ---------- */
 const CODE_TTL_MIN = 15, CODE_MAX_TRIES = 5;
 function emailCfg(){ return DB.emailConfig || {}; }
 function emailLive(){ const c = emailCfg(); return !!(c.enabled && c.serviceId && c.templateId && c.publicKey); }
 function genCode(){ const a = new Uint32Array(1); crypto.getRandomValues(a); return String(a[0] % 1000000).padStart(6,'0'); }
+const ROLE_NAMES = {owner_admin:'Owner / Admin', dispatcher:'Dispatcher', accounting:'Accounting', safety:'Safety', driver:'Driver', customer:'Customer'};
+function signInLink(){ return /^https?:/.test(location.protocol) ? location.origin + location.pathname : 'https://DriveModeTMS.com'; }
+async function sendWelcomeEmail(user){
+  const c = emailCfg();
+  const message = `Hi ${user.name},\n\nYour Drive Mode TMS account has been created.\n\nSign-in email: ${user.email}\nRole: ${ROLE_NAMES[user.role]||user.role}\nSign in at: ${signInLink()}\n\nYour administrator will give you your password. You can also set your own anytime with "Forgot password?" on the sign-in screen.\n\nIf you weren't expecting this account, reply to this email or contact ${c.fromName||'Drive Mode Logistics'}.`;
+  const r = await sendEmail(user.email, 'Your Drive Mode TMS account is ready', message);
+  user.welcomeEmail = r.demo ? 'not_sent_demo' : r.ok ? 'sent' : 'failed';
+  user.welcomeEmailAt = new Date().toISOString();
+  saveDB();
+  return r;
+}
+async function resendWelcome(userId){
+  const u = DB.users.find(x=>x.id===userId); if(!u) return;
+  if(!emailLive()){ alert('Email Delivery is in demo mode, so no email can be sent.\n\nTurn it on under Users → ✉ Email Delivery.'); return; }
+  const r = await sendWelcomeEmail(u);
+  alert(r.ok ? `✓ Confirmation email sent to ${u.email}` : `✗ Couldn't send the email: ${r.error}`);
+  renderUsers(document.getElementById('main'));
+}
 async function sendEmail(to, subject, message){
   if(!emailLive()) return {ok:true, demo:true};
   const c = emailCfg();
@@ -2110,17 +2129,14 @@ async function sendEmail(to, subject, message){
     return {ok:true};
   }catch(e){ return {ok:false, error:String(e.message||e)}; }
 }
-// purpose: 'verify' | 'reset'
 async function issueCode(user, purpose){
   const code = genCode();
   user[purpose+'Code'] = code;
   user[purpose+'Expires'] = Date.now() + CODE_TTL_MIN*60000;
   user[purpose+'Tries'] = 0;
   saveDB();
-  const subject = purpose==='verify' ? 'Verify your Drive Mode TMS email' : 'Reset your Drive Mode TMS password';
-  const message = purpose==='verify'
-    ? `Hi ${user.name},\n\nYour Drive Mode TMS verification code is: ${code}\n\nIt expires in ${CODE_TTL_MIN} minutes. If you didn't expect this, you can ignore this email.`
-    : `Hi ${user.name},\n\nYour Drive Mode TMS password reset code is: ${code}\n\nIt expires in ${CODE_TTL_MIN} minutes. If you didn't ask to reset your password, ignore this email — your password won't change.`;
+  const subject = 'Reset your Drive Mode TMS password';
+  const message = `Hi ${user.name},\n\nYour Drive Mode TMS password reset code is: ${code}\n\nIt expires in ${CODE_TTL_MIN} minutes. If you didn't ask to reset your password, ignore this email — your password won't change.`;
   const res = await sendEmail(user.email, subject, message);
   return {...res, code};
 }
@@ -2162,16 +2178,6 @@ function renderAuth(view, ctx){
       <button class="btn" style="width:100%;" onclick="attemptLogin()">Sign In</button>
       <div class="auth-links"><a href="#" onclick="event.preventDefault(); renderAuth('forgot',{email:document.getElementById('loginEmail').value})">Forgot password?</a></div>`);
   }
-  else if(view==='verify'){
-    const u = DB.users.find(x=>x.id===authState.userId);
-    card.innerHTML = authShell('Verify your email', `
-      <p class="auth-p">We sent a 6-digit code to <b>${esc(maskEmail(u.email))}</b>. Enter it to finish signing in.</p>
-      ${deliveryNote(authState.sendResult)}
-      <div class="field" style="margin-bottom:6px;"><label>Verification Code</label><input id="authCode" class="code-input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" ${enter('submitVerify')}></div>
-      <div id="authErr" class="auth-err"></div>
-      <button class="btn" style="width:100%;" onclick="submitVerify()">Verify &amp; Sign In</button>
-      <div class="auth-links"><a href="#" onclick="event.preventDefault(); resendVerify()">Resend code</a><a href="#" onclick="event.preventDefault(); renderAuth('signin')">Back to sign in</a></div>`);
-  }
   else if(view==='forgot'){
     card.innerHTML = authShell('Reset your password', `
       <p class="auth-p">Enter your account email and we'll send you a code to reset your password.</p>
@@ -2195,23 +2201,6 @@ function renderAuth(view, ctx){
 }
 function authBusy(on){ document.querySelectorAll('#authCard .btn').forEach(b=>{ b.disabled=on; b.style.opacity=on?.6:1; }); }
 
-async function startVerification(user){
-  authBusy(true);
-  const res = await issueCode(user, 'verify');
-  renderAuth('verify', {userId:user.id, sendResult:res});
-}
-function submitVerify(){
-  const u = DB.users.find(x=>x.id===authState.userId); if(!u) return renderAuth('signin');
-  const err = checkCode(u, 'verify', document.getElementById('authCode').value);
-  if(err){ document.getElementById('authErr').textContent = err; return; }
-  u.emailVerified = true; u.emailVerifiedAt = new Date().toISOString(); saveDB();
-  login(u);
-}
-async function resendVerify(){
-  const u = DB.users.find(x=>x.id===authState.userId); if(!u) return renderAuth('signin');
-  await startVerification(u);
-  if(authState.sendResult?.ok && !authState.sendResult.demo){ const e=document.getElementById('authErr'); e.style.color='var(--accent2)'; e.textContent='A new code was sent.'; }
-}
 async function submitForgot(prefill){
   const email = (prefill || document.getElementById('forgotEmail')?.value || '').trim().toLowerCase();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ const e=document.getElementById('authErr'); if(e) e.textContent='Enter a valid email address.'; return; }
@@ -2234,7 +2223,7 @@ function submitReset(){
   if(pw !== pw2){ e.textContent = 'Passwords do not match.'; return; }
   const err = checkCode(u, 'reset', document.getElementById('authCode').value);
   if(err){ e.textContent = err; return; }
-  u.password = pw; u.emailVerified = true; u.emailVerifiedAt = u.emailVerifiedAt || new Date().toISOString(); u.passwordChangedAt = new Date().toISOString();
+  u.password = pw; u.passwordChangedAt = new Date().toISOString();
   saveDB();
   renderAuth('signin', {email:u.email, notice:'Password updated. Sign in with your new password.'});
 }
@@ -2242,7 +2231,7 @@ function submitReset(){
 /* ---- admin: email delivery settings + verification tools ---- */
 function openEmailSettings(){
   const c = emailCfg();
-  openEntityModal('Email Delivery', 'Sends verification and password-reset codes through EmailJS (emailjs.com). Your EmailJS template must use {{to_email}} as the recipient and {{subject}} and {{message}} in the email.', [
+  openEntityModal('Email Delivery', 'Sends account confirmation emails and password-reset codes through EmailJS (emailjs.com). Your EmailJS template must use {{to_email}} as the recipient and {{subject}} and {{message}} in the email.', [
     {id:'enabled',label:'Status',type:'select',options:[{value:'false',label:'Off — demo mode (codes shown on screen)'},{value:'true',label:'On — send real emails'}],span2:true},
     {id:'serviceId',label:'EmailJS Service ID'},{id:'templateId',label:'EmailJS Template ID'},
     {id:'publicKey',label:'EmailJS Public Key',span2:true},
@@ -2262,24 +2251,17 @@ function openEmailSettings(){
     renderUsers(document.getElementById('main'));
   });
 }
-async function adminSendVerification(userId){
-  const u = DB.users.find(x=>x.id===userId); if(!u) return;
-  const r = await issueCode(u, 'verify');
-  if(!r.ok) alert(`Couldn't send: ${r.error}`);
-  else alert(r.demo ? `Demo mode — no email sent.\nThe user will be asked for a code the next time they sign in.` : `✓ Verification code sent to ${u.email}`);
-  renderUsers(document.getElementById('main'));
-}
 
 /* ---------- USER MANAGEMENT ---------- */
 function renderUsers(main){
   main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>User Management</h1><div class="desc">Create accounts, manage roles and permissions</div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn secondary" onclick="openEmailSettings()">✉ Email Delivery: ${emailLive()?'On':'Demo'}</button><button class="btn" onclick="openCreateUserModal()">+ New User</button></div></div>
-  ${!emailLive() ? '<div class="auth-msg demo" style="margin-bottom:16px;">Email delivery is in <b>demo mode</b>: verification and password-reset codes are shown on screen instead of emailed. Click “Email Delivery” to connect EmailJS.</div>' : ''}
-  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Email Verified</th><th>Status</th><th>Created</th><th></th></tr></thead>
+  ${!emailLive() ? '<div class="auth-msg demo" style="margin-bottom:16px;">Email delivery is in <b>demo mode</b>: account confirmation emails are not sent, and password-reset codes are shown on screen instead of emailed. Click “Email Delivery” to connect EmailJS.</div>' : ''}
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Confirmation Email</th><th>Status</th><th>Created</th><th></th></tr></thead>
   <tbody>${DB.users.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td><span class="pill" style="background:var(--panel2);color:var(--text)">${u.role.replace('_',' / ')}</span></td>
-    <td>${u.emailVerified===false ? pillColor('#4A3A1E','#F0C878','Unverified') : pillColor('#173A24','#5FE39A','Verified')}</td>
+    <td>${u.welcomeEmail==='sent' ? pillColor('#173A24','#5FE39A','Sent '+fmtDateOnly(u.welcomeEmailAt)) : u.welcomeEmail==='failed' ? pillColor('#3B1E1E','#E5555C','Failed') : u.welcomeEmail==='not_sent_demo' ? pillColor('#4A3A1E','#F0C878','Not sent') : '<span style="color:var(--dim)">—</span>'}</td>
     <td>${u.active?'<span class="pill" style="background:#173A24;color:#5FE39A">Active</span>':'<span class="pill" style="background:#3B1E1E;color:#E5555C">Inactive</span>'}</td><td>${u.createdAt ? fmtDateOnly(u.createdAt) : 'System'}</td>
-    <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button>${u.emailVerified===false && emailLive() ? `<button class="btn small secondary" onclick="adminSendVerification('${u.id}')">Send Code</button>` : ''}${currentUser && currentUser.role === 'owner_admin' && u.id !== currentUser.id ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteUser('${u.id}')">Delete</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button>${u.id!==currentUser?.id ? `<button class="btn small secondary" onclick="resendWelcome('${u.id}')">${u.welcomeEmail==='sent'?'Resend Email':'Send Email'}</button>` : ''}${currentUser && currentUser.role === 'owner_admin' && u.id !== currentUser.id ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteUser('${u.id}')">Delete</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function openCreateUserModal(){
   openEntityModal('Create New User Account', 'Add a team member with role-based access', [
@@ -2316,15 +2298,24 @@ function openCreateUserModal(){
       name:g('name').trim(),
       password,
       role:g('role'),
-      emailVerified:false,
       driverId:g('driverId')||null,
       customerId:g('customerId')||null,
       active:true,
       createdAt:now,
     });
     saveDB();
+    const created = DB.users.find(u=>u.email===email);
     renderUsers(document.getElementById('main'));
-    alert(`✅ User Created!\n\nEmail: ${email}\nPassword: (the one you just set)\n\nThe first time they sign in, they'll be asked for a 6-digit code ${emailLive()?'emailed to '+email:'(demo mode: shown on screen until Email Delivery is set up)'} to verify their email.`);
+    const base = `✅ User Created!\n\nEmail: ${email}\nPassword: (the one you just set)\n\nShare the password with the user securely.`;
+    if(!emailLive()){
+      created.welcomeEmail = 'not_sent_demo'; saveDB(); renderUsers(document.getElementById('main'));
+      alert(base + `\n\n✉ No confirmation email was sent — Email Delivery is in demo mode. Turn it on under Users → ✉ Email Delivery.`);
+    } else {
+      sendWelcomeEmail(created).then(r=>{
+        renderUsers(document.getElementById('main'));
+        alert(base + (r.ok ? `\n\n✉ Confirmation email sent to ${email}.` : `\n\n✗ The confirmation email could not be sent: ${r.error}\nYou can retry with “Resend Email” on the Users page.`));
+      });
+    }
   });
 }
 function openEditUserModal(id){
@@ -2342,17 +2333,15 @@ function openEditUserModal(id){
     ]},
     {id:'active',label:'Status',type:'select',options:[{value:true,label:'Active'},{value:false,label:'Inactive'}]},
     {id:'newPassword',label:'New Password (leave blank to keep current)',type:'password',span2:true},
-    {id:'emailVerified',label:'Email Verified',type:'select',options:[{value:'true',label:'Verified'},{value:'false',label:'Not verified — ask for a code at next sign-in'}]},
     {id:'driverId',label:'Linked Driver (for Driver role)',type:'select',options:[{value:'',label:'— None —'},...DB.drivers.map(d=>({value:d.id,label:d.name}))]},
     {id:'customerId',label:'Linked Customer (for Customer role)',type:'select',options:[{value:'',label:'— None —'},...DB.customers.map(c=>({value:c.id,label:c.name}))]},
-  ], {name:u.name, role:u.role, active:u.active, emailVerified:String(u.emailVerified!==false), driverId:u.driverId||'', customerId:u.customerId||''}, ()=>{
+  ], {name:u.name, role:u.role, active:u.active, driverId:u.driverId||'', customerId:u.customerId||''}, ()=>{
     const g=k=>document.getElementById('ent_'+k).value;
     const np = (g('newPassword')||'').trim();
     if(np && np.length < 8){ alert('New password must be at least 8 characters'); return false; }
     if(np) u.password = np;
     u.name = g('name').trim();
     u.role = g('role');
-    if(u.id!==currentUser?.id) u.emailVerified = g('emailVerified')==='true';
     u.active = g('active')==='true' || g('active')===true;
     u.driverId = g('driverId')||null;
     u.customerId = g('customerId')||null;
