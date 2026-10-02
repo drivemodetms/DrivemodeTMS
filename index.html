@@ -30,6 +30,11 @@ h1,h2,h3,.logo,.stat-num{font-family:'Big Shoulders Display',system-ui,sans-seri
 .login-logo .mark{width:14px;height:34px;background:var(--accent);border-radius:3px; transform:skewX(-12deg);}
 .login-logo span{font-size:30px; font-weight:800; letter-spacing:0.5px;}
 .login-sub{color:var(--dim); font-size:14px; margin-bottom:28px;}
+.boot-msg{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:14px;margin-top:22px;}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.save-state{font-size:11.5px;margin:8px 0;color:var(--dim);} .save-state.saved{color:#5FE39A;} .save-state.pending,.save-state.saving{color:#F0C878;} .save-state.error{color:var(--danger);}
+.refresh-toast{position:fixed;right:18px;bottom:18px;z-index:80;display:none;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.4);}
 .auth-err{color:var(--danger);font-size:12.5px;min-height:16px;margin:2px 0 12px;}
 .auth-links{display:flex;justify-content:space-between;gap:12px;margin-top:16px;font-size:13px;}
 .auth-links a{color:var(--accent);text-decoration:none;} .auth-links a:hover{text-decoration:underline;}
@@ -192,6 +197,7 @@ tbody tr:hover{background:var(--panel2); cursor:pointer;}
       <div class="sidebar-foot">
         <div class="who" id="whoName"></div>
         <div class="who-role" id="whoRole"></div>
+        <div id="saveState" class="save-state saved">● All changes saved</div>
         <button class="logout-btn" onclick="logout()">Sign out</button>
       </div>
     </div>
@@ -227,13 +233,17 @@ tbody tr:hover{background:var(--panel2); cursor:pointer;}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* ============================================================
-   DRIVE MODE TMS — PROTOTYPE
-   Persistence: localStorage (per-browser demo only)
-   v7: bug-fix pass (modals, load IDs, portals, payroll, settlements, XSS escaping)
+   DRIVE MODE TMS
+   Accounts + data: Supabase (Auth, Postgres with row-level security, Realtime)
    ============================================================ */
-const LS_KEY = 'dmtms_data_v1';
+// ---- Supabase project (the anon key is public by design; row-level security protects the data) ----
+const SUPABASE_URL = 'https://fkkhjmqdjlsahrnpelxt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZra2hqbXFkamxzYWhybnBlbHh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0NzIyMDAsImV4cCI6MjEwNjA0ODIwMH0.lJiVpm_-BsqL07rZHQFCEr0QBxUGz63HSOyd8-ph8Iw';
+const SITE_URL = 'https://drivemodetms.com';   // where invitation / reset links send people when opened from a file
+
 const STATUSES = ['available','assigned','dispatched','at_pickup','loaded','in_transit','at_delivery','delivered','documents_pending','invoiced','paid'];
 const STATUS_LABEL = {available:'Available',assigned:'Assigned',dispatched:'Dispatched',at_pickup:'At Pickup',loaded:'Loaded',in_transit:'In Transit',at_delivery:'At Delivery',delivered:'Delivered',documents_pending:'Documents Pending',invoiced:'Invoiced',paid:'Paid',cancelled:'Cancelled'};
 const ROLES = [
@@ -241,161 +251,313 @@ const ROLES = [
   {id:'dispatcher', label:'Dispatcher', desc:'Manage loads & assignments'},
   {id:'accounting', label:'Accounting', desc:'Revenue, invoices & payments'},
   {id:'safety', label:'Safety', desc:'Compliance & driver alerts'},
-  {id:'driver', label:'Driver', desc:'Driver portal preview'},
-  {id:'customer', label:'Customer', desc:'Customer portal preview'},
+  {id:'driver', label:'Driver', desc:'Driver portal'},
+  {id:'customer', label:'Customer', desc:'Customer portal'},
 ];
+const ROLE_NAMES = {owner_admin:'Owner / Admin', dispatcher:'Dispatcher', accounting:'Accounting', safety:'Safety', driver:'Driver', customer:'Customer'};
+const STAFF_ROLES = ['owner_admin','dispatcher','accounting','safety'];
+const COLLECTIONS = ['loads','drivers','trucks','trailers','customers','expenses','factoringCompanies','factoringSubmissions',
+  'loadBoardConfig','loadBoardPostings','loadBoardListings','ownerOperators','ownerOperatorSettlements','driverSettlements','w2Payrolls','documents'];
+const LEGACY_KEY = 'dmtms_data_v1';   // data saved in this browser by the old (pre-Supabase) version
 
-function seedData(){
-  const today = new Date('2026-09-27T08:00:00');
-  const d = (offset,h=8) => { const t=new Date(today); t.setDate(t.getDate()+offset); t.setHours(h,0,0,0); return t.toISOString(); };
-  return {
-    drivers:[
-      {id:'drv1', name:'Marcus Reyes', phone:'(614) 555-0142', email:'mreyes@drivemode.com', cdl:'OH-88213410', cdlExp:'2026-11-02', medExp:'2026-10-15', mvr:'Clean — pulled 2026-06-01', status:'active', truckId:'trk1', payType:'per_mile', payRate:0.55, classification:'w2_employee', employeeId:'DML01', hourlyRate:22.50, overtimeRate:33.75, milesRate:0.45, percentageRate:8, w4Filing:'single', federalWithholding:2, state:'OH', healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:100, hireDate:'2023-01-15'},
-      {id:'drv2', name:'Angela Cho', phone:'(614) 555-0199', email:'acho@drivemode.com', cdl:'OH-77120044', cdlExp:'2027-04-18', medExp:'2027-01-09', mvr:'Clean — pulled 2026-05-14', status:'active', truckId:'trk2', payType:'percentage', payRate:28, classification:'w2_employee', employeeId:'DML02', hourlyRate:20.00, overtimeRate:30.00, milesRate:0.40, percentageRate:28, w4Filing:'married', federalWithholding:3, state:'OH', healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:150, hireDate:'2023-06-01'},
-      {id:'drv3', name:'Derrick Owens', phone:'(614) 555-0177', email:'downens@drivemode.com', cdl:'IN-55009812', cdlExp:'2026-10-05', medExp:'2026-09-30', mvr:'1 violation — review', status:'active', truckId:'trk3', payType:'per_mile', payRate:0.58, classification:'owner_operator_1099', ownerOperatorId:'oo_001'},
-    ],
-    trucks:[
-      {id:'trk1', unit:'T-104', vin:'1FUJA6CV05LM12345', plate:'OH-TR4021', mileage:312840, insExp:'2027-02-01', regExp:'2027-01-15', nextInspection:'2026-11-20'},
-      {id:'trk2', unit:'T-108', vin:'1XKAD49X8ND512233', plate:'OH-TR4055', mileage:198220, insExp:'2027-05-01', regExp:'2026-10-10', nextInspection:'2026-10-02'},
-      {id:'trk3', unit:'T-112', vin:'3AKJHHDR9GSGV0091', plate:'IN-TR7712', mileage:401110, insExp:'2026-10-08', regExp:'2027-03-01', nextInspection:'2026-12-01'},
-    ],
-    trailers:[
-      {id:'tr1', unit:'DV-51', type:'Dry Van', plate:'OH-TL9012', insExp:'2027-02-01', regExp:'2027-01-15'},
-      {id:'tr2', unit:'RF-22', type:'Reefer', plate:'OH-TL9033', insExp:'2026-10-20', regExp:'2027-04-01'},
-      {id:'tr3', unit:'FB-09', type:'Flatbed', plate:'IN-TL2210', insExp:'2027-06-01', regExp:'2027-02-01'},
-    ],
-    customers:[
-      {id:'cus1', name:'Coastal Foods Inc.', type:'shipper', contact:'Lena Park', email:'lena@coastalfoods.com', phone:'(704) 555-0110', terms:'Net 30'},
-      {id:'cus2', name:'Heartland Produce', type:'shipper', contact:'Tom Rizzo', email:'tom@heartlandproduce.com', phone:'(317) 555-0166', terms:'Net 15'},
-      {id:'cus3', name:'Apex Brokerage LLC', type:'broker', contact:'Nadia Fisher', email:'nadia@apexbrokerage.com', phone:'(888) 555-0199', terms:'Quick Pay 2%'},
-    ],
-    loads:[
-      {id:'L-1001', shipperId:'cus1', brokerId:'cus3', pickupLoc:'Charlotte, NC', deliveryLoc:'Columbus, OH', pickupAt:d(0,7), deliveryAt:d(1,14), rate:2150, miles:415, equipment:'reefer', truckId:'trk1', trailerId:'tr2', driverId:'drv1', status:'in_transit', detention:0, layover:0, tonu:0, notes:'Temp -10F, driver has PIN for gate.', docs:{ratecon:'ratecon_1001.pdf', bol:'bol_1001.pdf'}},
-      {id:'L-1002', shipperId:'cus2', brokerId:'cus3', pickupLoc:'Indianapolis, IN', deliveryLoc:'Pittsburgh, PA', pickupAt:d(1,9), deliveryAt:d(2,12), rate:1875, miles:355, equipment:'dry_van', truckId:'trk2', trailerId:'tr1', driverId:'drv2', status:'dispatched', detention:0, layover:0, tonu:0, notes:'', docs:{ratecon:'ratecon_1002.pdf'}},
-      {id:'L-1003', shipperId:'cus1', brokerId:null, pickupLoc:'Columbus, OH', deliveryLoc:'Louisville, KY', pickupAt:d(-2,8), deliveryAt:d(-1,16), rate:1420, miles:200, equipment:'dry_van', truckId:'trk3', trailerId:'tr3', driverId:'drv3', status:'delivered', detention:150, layover:0, tonu:0, notes:'Receiver held truck 1.5 hrs — detention billed.', docs:{ratecon:'ratecon_1003.pdf', bol:'bol_1003.pdf', pod:'pod_1003.pdf'}},
-      {id:'L-1004', shipperId:'cus2', brokerId:'cus3', pickupLoc:'Chicago, IL', deliveryLoc:'Columbus, OH', pickupAt:d(-5,8), deliveryAt:d(-4,15), rate:1980, miles:355, equipment:'dry_van', truckId:null, trailerId:null, driverId:null, status:'invoiced', detention:0, layover:0, tonu:0, notes:'', docs:{ratecon:'ratecon_1004.pdf', bol:'bol_1004.pdf', pod:'pod_1004.pdf'}},
-      {id:'L-1005', shipperId:'cus1', brokerId:'cus3', pickupLoc:'Memphis, TN', deliveryLoc:'Charlotte, NC', pickupAt:d(-10,8), deliveryAt:d(-9,17), rate:2400, miles:490, equipment:'reefer', truckId:null, trailerId:null, driverId:null, status:'paid', detention:0, layover:0, tonu:0, notes:'', docs:{ratecon:'ratecon_1005.pdf', bol:'bol_1005.pdf', pod:'pod_1005.pdf'}},
-      {id:'L-1006', shipperId:'cus2', brokerId:null, pickupLoc:'Columbus, OH', deliveryLoc:'Detroit, MI', pickupAt:d(2,8), deliveryAt:d(2,15), rate:1150, miles:205, equipment:'dry_van', truckId:null, trailerId:null, driverId:null, status:'available', detention:0, layover:0, tonu:0, notes:'Needs driver assignment.', docs:{}},
-      {id:'L-1007', shipperId:'cus1', brokerId:'cus3', pickupLoc:'Columbus, OH', deliveryLoc:'Nashville, TN', pickupAt:d(3,9), deliveryAt:d(3,18), rate:1690, miles:400, equipment:'dry_van', truckId:'trk2', trailerId:'tr1', driverId:'drv2', status:'assigned', detention:0, layover:0, tonu:0, notes:'', docs:{ratecon:'ratecon_1007.pdf'}},
-    ],
-    loadBoardPostings:[
-      {id:'lbp1', loadId:'L-1006', board:'DAT', externalRef:'DAT-88213-OH', postedRate:1150, status:'posted', postedAt:d(-1,10)},
-    ],
-    loadBoardListings:[
-      {id:'ext1', board:'DAT', externalRef:'DAT-90142-IL', broker:'Redwood Logistics', origin:'Columbus, OH', destination:'St. Louis, MO', pickupDate:d(2,8), equipment:'dry_van', rate:1540, miles:365},
-      {id:'ext2', board:'Truckstop.com', externalRef:'TS-55621-KY', broker:'Total Quality Logistics', origin:'Louisville, KY', destination:'Columbus, OH', pickupDate:d(1,7), equipment:'dry_van', rate:980, miles:200},
-      {id:'ext3', board:'DAT', externalRef:'DAT-90188-MI', broker:'Echo Global Logistics', origin:'Detroit, MI', destination:'Columbus, OH', pickupDate:d(3,9), equipment:'reefer', rate:1275, miles:205},
-      {id:'ext4', board:'Truckstop.com', externalRef:'TS-33410-NC', broker:'Coyote Logistics', origin:'Charlotte, NC', destination:'Columbus, OH', pickupDate:d(4,8), equipment:'dry_van', rate:1850, miles:415},
-      {id:'ext5', board:'Brokerages', externalRef:'BR-44521-PA', broker:'Saia LTL Brokerage', origin:'Pittsburgh, PA', destination:'Columbus, OH', pickupDate:d(2,10), equipment:'dry_van', rate:1320, miles:280},
-    ],
-    loadBoardConfig:[
-      {board:'DAT', name:'DAT One', apiKey:'', connected:false, apiUrl:'https://api.dat.com'},
-      {board:'Truckstop.com', name:'Truckstop.com', apiKey:'', connected:false, apiUrl:'https://api.truckstop.com'},
-      {board:'Brokerages', name:'Carrier Exchange / Echo', apiKey:'', connected:false, apiUrl:'https://api.echo.com'},
-    ],
-    factoringCompanies:[
-      {id:'fc1', name:'RTS Financial', advanceRate:97, feePct:3, reserveDays:0, active:true},
-      {id:'fc2', name:'Triumph Business Capital', advanceRate:95, feePct:2.5, reserveDays:2, active:true},
-    ],
-    factoringSubmissions:[
-      {id:'fs1', loadId:'L-1005', factoringId:'fc1', amount:2400, status:'reserve_released', submittedAt:d(-9,17), fundedAt:d(-9,18)},
-    ],
-    expenses:[
-      {id:'ex1', category:'fuel', amount:410, loadId:'L-1001', date:'2026-09-25', notes:'Fuel — I-40 corridor'},
-      {id:'ex2', category:'tolls', amount:65, loadId:'L-1002', date:'2026-09-26', notes:'PA Turnpike'},
-      {id:'ex3', category:'maintenance', amount:820, loadId:null, date:'2026-09-20', notes:'T-112 brake service'},
-      {id:'ex4', category:'driver_pay', amount:3200, loadId:null, date:'2026-09-22', notes:'Weekly driver settlements'},
-      {id:'ex5', category:'other', amount:140, loadId:null, date:'2026-09-24', notes:'ELD subscription'},
-    ],
-    w2Employees:[],
-    w2Payrolls:[
-      {id:'pay_001', driverId:'drv1', payPeriod:{startDate:'2026-09-01', endDate:'2026-09-15', payDate:'2026-09-20'}, regularHours:80, overtimeHours:8, milesPay:2250, percentagePay:1500, bonuses:0, reimbursements:0, grossWages:5520, federalIncome:580.50, socialSecurity:342.24, medicare:80.04, stateIncome:200, localTaxes:0, healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:100, otherDeductions:0, totalDeductions:1602.78, netPay:3917.22, employerSSA:342.24, employerMedicare:80.04, status:'paid', approvedBy:'admin', approvedAt:'2026-09-19', paidAt:'2026-09-20'},
-    ],
-    ownerOperators:[
-      {id:'oo_001', name:'John Smith', driverId:'drv3', companyName:'Smith Trucking LLC', truckNumber:'T-156', status:'active', agreementType:'percentage_split', ownerShare:88, insuranceDeduction:350, dispatchPercentage:5, eldMonthlyFee:50, trailerRentalMonthly:200, maintenancePool:100, taxId:'XX-1234567', w9OnFile:true},
-      {id:'oo_002', name:'Maria Garcia', driverId:null, companyName:'Garcia Logistics', truckNumber:'T-201', status:'active', agreementType:'percentage_split', ownerShare:90, insuranceDeduction:300, dispatchPercentage:4, eldMonthlyFee:50, trailerRentalMonthly:200, maintenancePool:100, taxId:'YY-9876543', w9OnFile:true},
-    ],
-    driverSettlements:[],
-    ownerOperatorSettlements:[
-      {id:'settlement_001', ownerOperatorId:'oo_001', settlementPeriod:{startDate:'2026-09-01', endDate:'2026-09-30'}, loadIds:['L-1001','L-1002','L-1003'], grossRevenue:5550, creditsBreakdown:{loadRevenue:5000, accessorials:350, bonuses:0, reimbursements:200}, deductions:{insurance:350, dispatchFee:277.50, eldFee:50, trailerRental:200, maintenance:100, fuelAdvance:0, otherDeductions:0, totalDeductions:977.50}, ownershipSplit:{percentage:88, ownerShare:4023.80, companyShare:548.70}, netSettlement:4023.80, status:'paid', approvedBy:'admin', approvedAt:'2026-09-30', paidAt:'2026-10-01'},
-    ],
-    users:[
-      {id:'u1', email:'admin@drivemodetms.com', name:'Admin', password:'Admin123!', role:'owner_admin', active:true},
-      {id:'u2', email:'dispatcher@drivemodetms.com', name:'John Dispatcher', password:'Dispatcher123!', role:'dispatcher', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
-      {id:'u3', email:'accounting@drivemodetms.com', name:'Sarah Accounting', password:'Accounting123!', role:'accounting', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
-      {id:'u4', email:'safety@drivemodetms.com', name:'Mike Safety', password:'Safety123!', role:'safety', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
-      {id:'u5', email:'driver@drivemodetms.com', name:'Marcus Reyes', password:'Driver123!', role:'driver', driverId:'drv1', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
-      {id:'u6', email:'customer@drivemodetms.com', name:'Lisa Customer', password:'Customer123!', role:'customer', customerId:'cus1', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
-    ],
-    documents:[],
-    emailConfig:{enabled:false, serviceId:'', templateId:'', publicKey:'', fromName:'Drive Mode Logistics'},
-  };
-}
+// read invitation / reset link details before the Supabase client clears them from the address bar
+const LINK_PARAMS = new URLSearchParams(location.hash.replace(/^#/,''));
+const LINK_TYPE = LINK_PARAMS.get('type');
+const LINK_ERROR = LINK_PARAMS.get('error_description') || new URLSearchParams(location.search).get('error_description');
 
-function loadDB(){
-  const seed = seedData();
-  let raw = localStorage.getItem(LS_KEY);
-  if(!raw){ localStorage.setItem(LS_KEY, JSON.stringify(seed)); return seed; }
-  let data;
-  try{ data = JSON.parse(raw); }catch(e){ data = null; }
-  if(!data){ localStorage.setItem(LS_KEY, JSON.stringify(seed)); return seed; }
-  // migrate: backfill any top-level sections added by later app versions
-  Object.keys(seed).forEach(k=>{ if(!(k in data)) data[k] = seed[k]; });
-  // migrate: backfill new per-driver fields (classification, payType, payRate) for saves from older versions
-  if(Array.isArray(data.drivers)){
-    data.drivers.forEach(d=>{
-      const seedMatch = seed.drivers.find(sd=>sd.id===d.id) || seed.drivers[0];
-      if(d.classification===undefined) d.classification = seedMatch.classification;
-      if(d.payType===undefined) d.payType = seedMatch.payType;
-      if(d.payRate===undefined) d.payRate = seedMatch.payRate;
-    });
-  }
-  // migrate: strip stray spaces saved in emails/passwords by older versions
-  (data.users||[]).forEach(u=>{ if(typeof u.email==='string') u.email = u.email.trim().toLowerCase(); if(typeof u.password==='string') u.password = u.password.trim(); });
-  // migrate: email verification removed — clear leftover flags/codes
-  (data.users||[]).forEach(u=>{ ['emailVerified','emailVerifiedAt','verifyCode','verifyExpires','verifyTries'].forEach(k=>delete u[k]); });
-  // migrate: link demo portal users to their records
-  (data.users||[]).forEach(u=>{
-    const su = seed.users.find(x=>x.id===u.id && x.email===u.email);
-    if(su && su.driverId && u.driverId===undefined) u.driverId = su.driverId;
-    if(su && su.customerId && u.customerId===undefined) u.customerId = su.customerId;
-  });
-  // migrate: drop owner-operator links to drivers that don't exist
-  (data.ownerOperators||[]).forEach(o=>{ if(o.driverId && !(data.drivers||[]).some(d=>d.id===o.driverId)) o.driverId = null; });
-  // migrate: percentage rates stored as fractions (e.g. 0.08) -> whole percent
-  (data.drivers||[]).forEach(d=>{
-    if(typeof d.percentageRate==='number' && d.percentageRate>0 && d.percentageRate<1){
-      d.percentageRate = d.payType==='percentage' ? d.payRate : Math.round(d.percentageRate*100);
-    }
-  });
-  localStorage.setItem(LS_KEY, JSON.stringify(data));
-  return data;
+const CONFIGURED = /^https:\/\/.+\.supabase\.co$/.test(SUPABASE_URL) && !!window.supabase;
+const sb = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'implicit' }
+}) : null;
+
+// fill in safe blanks so a record with missing fields never breaks a page (in memory only)
+const LOAD_DEFAULTS = {pickupLoc:'', deliveryLoc:'', rate:0, miles:0, hours:0, detention:0, layover:0, tonu:0, notes:'', status:'available', equipment:'dry_van', docs:{}};
+function normalizeRecord(col, d){
+  if(!d || typeof d!=='object') return d;
+  if(col==='loads'){ for(const k in LOAD_DEFAULTS) if(d[k]==null) d[k] = (k==='docs' ? {} : LOAD_DEFAULTS[k]); }
+  if(col==='drivers'){ if(d.name==null) d.name=''; if(!d.status) d.status='active'; }
+  return d;
 }
-function saveDB(){ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
-let DB = loadDB();
+function emptyDB(){ const d = {users:[]}; COLLECTIONS.forEach(c=>d[c]=[]); return d; }
+let DB = emptyDB();
 let currentRole = null;
 let currentUser = null;
 let editingLoadId = null;
 
-/* ---------- LOGIN ---------- */
-function renderLogin(){
-  renderAuth('signin');
-  document.getElementById('login').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
+/* ---------- SYNC: in-memory DB  <->  public.records ---------- */
+// Keys of objects are sorted so the same data always compares equal (Postgres jsonb reorders keys).
+function canon(v){
+  if(Array.isArray(v)) return '[' + v.map(x=> x===undefined || typeof x==='function' ? 'null' : canon(x)).join(',') + ']';
+  if(v && typeof v==='object') return '{' + Object.keys(v).sort().filter(k=>v[k]!==undefined && typeof v[k]!=='function').map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',') + '}';
+  return JSON.stringify(v===undefined ? null : v);
 }
-function attemptLogin(){
+const recKey = (col,id) => col + '\u0001' + id;
+function recIdOf(col, item){ return item ? String(item.id ?? item.board ?? '') : ''; }
+let synced = new Map();   // key -> canon(data) as last known on the server
+let sortOf = new Map();   // key -> sort value
+let rawOf = new Map();    // key -> data exactly as stored on the server (before blanks were filled in)
+let saveTimer = null, saving = false, saveAgain = false, saveState = 'saved';
+const isStaff = () => !!currentUser && STAFF_ROLES.includes(currentUser.role);
+
+async function fetchAll(){
+  const rows = []; const page = 1000;
+  for(let from = 0; ; from += page){
+    const {data, error} = await sb.from('records').select('collection,id,data,sort').order('sort',{ascending:true}).order('id',{ascending:true}).range(from, from+page-1);
+    if(error) throw error;
+    rows.push(...data);
+    if(data.length < page) break;
+  }
+  const d = emptyDB(); d.users = DB.users;
+  synced = new Map(); sortOf = new Map(); rawOf = new Map();
+  rows.forEach(r=>{
+    if(!d[r.collection]) return;
+    const k = recKey(r.collection, r.id);
+    rawOf.set(k, JSON.stringify(r.data));
+    normalizeRecord(r.collection, r.data);
+    d[r.collection].push(r.data);
+    synced.set(k, canon(r.data)); sortOf.set(k, r.sort);
+  });
+  DB = d;
+}
+
+function saveDB(){
+  if(!currentUser || !sb) return;
+  setSaveState('pending');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 150);
+}
+function pendingChanges(){
+  const ups = [], dels = [], seen = new Set(); let seq = 0;
+  COLLECTIONS.forEach(col=>{
+    (DB[col]||[]).forEach(item=>{
+      const id = recIdOf(col, item); if(!id) return;
+      const k = recKey(col, id);
+      if(seen.has(k)) return;           // duplicate ids: first one wins
+      seen.add(k);
+      const c = canon(item);
+      if(synced.get(k) !== c){
+        let s = sortOf.get(k);
+        if(s == null){ s = Date.now()*1000 + (seq++); sortOf.set(k, s); }
+        ups.push({k, c, isNew: !synced.has(k), row:{collection:col, id, data:JSON.parse(c), sort:s}});
+      }
+    });
+  });
+  for(const k of synced.keys()) if(!seen.has(k)){ const [col,id] = k.split('\u0001'); dels.push({k, col, id}); }
+  return {ups, dels};
+}
+async function flushSave(){
+  if(saving){ saveAgain = true; return true; }
+  const {ups, dels} = pendingChanges();
+  if(!ups.length && !dels.length){ setSaveState('saved'); return true; }
+  saving = true; setSaveState('saving');
+  const before = new Map(synced);
+  ups.forEach(u=>synced.set(u.k, u.c));
+  dels.forEach(d=>{ synced.delete(d.k); sortOf.delete(d.k); });
+  try{
+    if(isStaff()){
+      for(let i=0; i<ups.length; i+=400){
+        const {error} = await sb.from('records').upsert(ups.slice(i,i+400).map(u=>u.row));
+        if(error) throw error;
+        ups.slice(i,i+400).forEach(u=>rawOf.set(u.k, JSON.stringify(u.row.data)));
+      }
+      const byCol = {};
+      dels.forEach(d=>(byCol[d.col] = byCol[d.col] || []).push(d.id));
+      for(const col of Object.keys(byCol)){
+        for(let i=0; i<byCol[col].length; i+=200){
+          const {error} = await sb.from('records').delete().eq('collection', col).in('id', byCol[col].slice(i,i+200));
+          if(error) throw error;
+        }
+      }
+    } else {
+      // drivers can only update their own existing loads (status + documents)
+      for(const u of ups){
+        if(u.isNew) throw new Error('You don’t have permission to add records.');
+        const base = rawOf.has(u.k) ? JSON.parse(rawOf.get(u.k)) : {};
+        const payload = Object.assign(base, {status:u.row.data.status, docs:u.row.data.docs});
+        const {data, error} = await sb.from('records').update({data:payload}).eq('collection', u.row.collection).eq('id', u.row.id).select('id');
+        if(error) throw error;
+        if(!data || !data.length) throw new Error('permission denied');
+      }
+      if(dels.length) throw new Error('You don’t have permission to delete records.');
+      ups.forEach(u=>{ const b = rawOf.has(u.k) ? JSON.parse(rawOf.get(u.k)) : {}; rawOf.set(u.k, JSON.stringify(Object.assign(b, {status:u.row.data.status, docs:u.row.data.docs}))); });
+    }
+    setSaveState('saved');
+  }catch(e){
+    synced = before;
+    setSaveState('error');
+    saving = false; saveAgain = false;
+    alert('⚠ Your last change could not be saved.\n\n' + friendlyError(e) + '\n\nThe page will reload the latest data.');
+    try{ await fetchAll(); if(lastNavKey && !document.querySelector('.overlay.open')) navigate(lastNavKey); setSaveState('saved'); }catch(_){}
+    return false;
+  }
+  saving = false;
+  if(saveAgain){ saveAgain = false; return flushSave(); }
+  return true;
+}
+function setSaveState(s){
+  saveState = s;
+  const el = document.getElementById('saveState'); if(!el) return;
+  el.className = 'save-state ' + s;
+  el.textContent = s==='saved' ? '● All changes saved' : s==='error' ? '⚠ Not saved' : 'Saving…';
+}
+window.addEventListener('beforeunload', e=>{ if(saveState==='pending' || saveState==='saving'){ e.preventDefault(); e.returnValue=''; } });
+function friendlyError(e){
+  const m = String(e && (e.message || e.error_description || e) || '');
+  if(/failed to fetch|networkerror|load failed/i.test(m)) return 'Can’t reach the server. Check your internet connection.';
+  if(/row-level security|permission denied|not allowed|only update/i.test(m)) return 'You don’t have permission to make that change.';
+  if(/jwt|token/i.test(m)) return 'Your session expired. Please sign in again.';
+  return m || 'Unknown error.';
+}
+
+/* ---------- LIVE UPDATES from other users ---------- */
+let rtChannel = null, remoteTimer = null, lastNavKey = null, navRoot = null;
+function subscribeRealtime(){
+  if(rtChannel) sb.removeChannel(rtChannel);
+  rtChannel = sb.channel('records-live')
+    .on('postgres_changes', {event:'*', schema:'public', table:'records'}, onRemoteChange)
+    .subscribe();
+}
+function onRemoteChange(p){
+  const row = p.eventType==='DELETE' ? p.old : p.new;
+  if(!row || !COLLECTIONS.includes(row.collection)) return;
+  const col = row.collection, id = String(row.id), k = recKey(col, id);
+  if(p.eventType==='DELETE'){
+    if(!synced.has(k)) return;
+    synced.delete(k); sortOf.delete(k);
+    DB[col] = DB[col].filter(x=>recIdOf(col,x)!==id);
+  } else {
+    rawOf.set(k, JSON.stringify(row.data));
+    normalizeRecord(col, row.data);
+    const c = canon(row.data);
+    if(synced.get(k)===c) return;   // our own change coming back
+    synced.set(k, c); if(row.sort!=null) sortOf.set(k, row.sort);
+    const arr = DB[col]; const i = arr.findIndex(x=>recIdOf(col,x)===id);
+    if(i>=0) arr[i] = row.data; else arr.push(row.data);
+  }
+  clearTimeout(remoteTimer); remoteTimer = setTimeout(applyRemoteRefresh, 400);
+}
+function applyRemoteRefresh(){
+  if(!currentUser || !lastNavKey) return;
+  const main = document.getElementById('main');
+  const overlayOpen = !!document.querySelector('.overlay.open');
+  const ae = document.activeElement;
+  const typing = ae && main.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+  if(!overlayOpen && !typing && main.firstElementChild === navRoot){
+    const y = window.scrollY; navigate(lastNavKey); window.scrollTo(0, y); hideRefreshToast();
+  } else showRefreshToast();
+}
+function showRefreshToast(){
+  let t = document.getElementById('refreshToast');
+  if(!t){ t = document.createElement('div'); t.id = 'refreshToast'; t.className = 'refresh-toast'; document.body.appendChild(t); }
+  t.innerHTML = 'Your team made changes. <button class="btn small" onclick="hideRefreshToast(); if(!document.querySelector(\'.overlay.open\')) navigate(lastNavKey)">Refresh</button>';
+  t.style.display = 'flex';
+}
+function hideRefreshToast(){ const t = document.getElementById('refreshToast'); if(t) t.style.display = 'none'; }
+
+/* ---------- ACCOUNTS ---------- */
+function toUser(p){ return {id:p.id, email:p.email, name:p.name, role:p.role, driverId:p.driver_id, customerId:p.customer_id, active:p.active,
+  createdAt:p.created_at, invitedAt:p.invited_at, confirmedAt:p.confirmed_at, lastSignInAt:p.last_sign_in_at}; }
+async function loadUsers(){
+  const {data, error} = await sb.from('profiles').select('*').order('created_at', {ascending:true});
+  if(error) throw error;
+  DB.users = data.map(toUser);
+}
+async function callAdmin(action, payload){
+  const {data, error} = await sb.functions.invoke('admin-users', {body:Object.assign({action, redirectTo:appUrl()}, payload||{})});
+  if(error){
+    let msg = error.message;
+    try{ const j = await error.context.json(); if(j && j.error) msg = j.error; }catch(_){}
+    throw new Error(msg);
+  }
+  if(data && data.error) throw new Error(data.error);
+  return data;
+}
+function appUrl(){ return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : SITE_URL; }
+function authErrorText(e){
+  const m = String(e && e.message || '').toLowerCase();
+  if(m.includes('banned')) return 'This account is deactivated. Ask an admin to reactivate it.';
+  if(m.includes('invalid login') || m.includes('invalid credentials')) return 'Incorrect email or password. If you were just invited, open the link in your invitation email first to set your password.';
+  if(m.includes('email not confirmed')) return 'Confirm your email first — open the confirmation link we emailed you.';
+  if(m.includes('rate limit') || m.includes('too many')) return 'Too many attempts. Wait a few minutes and try again.';
+  if(m.includes('database error saving new user')) return 'Sign-ups are closed. Ask your Drive Mode administrator for an invitation.';
+  if(m.includes('same as') || m.includes('different from the old')) return 'Choose a password different from your old one.';
+  if(m.includes('password')) return e.message;
+  return friendlyError(e);
+}
+
+/* ---------- STARTUP ---------- */
+function showLoginScreen(){ document.getElementById('login').style.display='flex'; document.getElementById('app').style.display='none'; }
+function showBoot(msg){
+  showLoginScreen();
+  document.getElementById('authCard').innerHTML = `<div class="login-logo"><div class="mark"></div><span>Drive Mode TMS</span></div>
+    <div class="boot-msg"><span class="spinner"></span>${esc(msg)}</div>`;
+}
+async function boot(){
+  if(!CONFIGURED){
+    showLoginScreen();
+    renderAuth('error', {message: window.supabase ? 'This copy of the app isn’t connected to a Supabase project yet.' : 'Couldn’t load the sign-in library. Check your internet connection and reload.'});
+    return;
+  }
+  showBoot('Loading…');
+  sb.auth.onAuthStateChange((event)=>{
+    if(event==='PASSWORD_RECOVERY' && authState.view!=='setpw'){ showLoginScreen(); renderAuth('setpw', {mode:'recovery'}); }
+  });
+  let session = null;
+  try{ ({data:{session}} = await sb.auth.getSession()); }catch(e){}
+  if(LINK_ERROR){
+    if(session) await sb.auth.signOut();
+    showLoginScreen();
+    renderAuth('signin', {error: /expired|invalid/i.test(LINK_ERROR) ? 'That email link has expired or was already used. Ask your administrator to resend your invitation, or use “Forgot password?”.' : LINK_ERROR});
+    return;
+  }
+  if(session && (LINK_TYPE==='invite' || LINK_TYPE==='recovery')){
+    history.replaceState(null, '', location.pathname + location.search);
+    showLoginScreen(); renderAuth('setpw', {mode:LINK_TYPE}); return;
+  }
+  if(session) return enterApp();
+  let setup = false;
+  try{ const {data} = await sb.rpc('needs_setup'); setup = data === true; }catch(e){}
+  showLoginScreen();
+  renderAuth(setup ? 'setup' : 'signin');
+}
+async function enterApp(){
+  showBoot('Loading your data…');
+  try{
+    const {data:{user}, error:ue} = await sb.auth.getUser();
+    if(ue || !user) throw ue || new Error('Please sign in again.');
+    const {data:prof, error} = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    if(error) throw error;
+    if(!prof || !prof.active){
+      await sb.auth.signOut();
+      showLoginScreen();
+      renderAuth('signin', {error: !prof ? 'Your account doesn’t have access set up. Ask your administrator.' : 'This account is deactivated. Ask an admin to reactivate it.'});
+      return;
+    }
+    currentUser = toUser(prof); currentRole = currentUser.role;
+    await fetchAll();
+    if(isStaff()) await loadUsers(); else DB.users = [currentUser];
+  }catch(e){
+    currentUser = null; currentRole = null;
+    showLoginScreen();
+    renderAuth('error', {message: 'Couldn’t load your data. ' + friendlyError(e), retry:true});
+    return;
+  }
+  subscribeRealtime();
+  login(currentUser);
+  setSaveState('saved');
+}
+
+/* ---------- LOGIN ---------- */
+function renderLogin(){ showLoginScreen(); renderAuth('signin'); }
+async function attemptLogin(){
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const password = document.getElementById('loginPassword').value.trim();
+  const password = document.getElementById('loginPassword').value;
   const errEl = document.getElementById('loginError');
   if(!email || !password){ errEl.textContent = 'Enter your email and password.'; return; }
-
-  // Check against DB users only
-  const account = DB.users.find(u=>String(u.email||'').trim().toLowerCase()===email);
-  if(!account){ errEl.innerHTML = 'No account with that email in this browser.<br><span style="color:var(--dim)">Accounts are saved in the browser where they were created.</span>'; return; }
-  if(String(account.password||'').trim()!==password){ errEl.textContent = 'Incorrect password.'; return; }
-  if(!account.active){ errEl.textContent = 'This account is deactivated. Ask an admin to reactivate it.'; return; }
-  errEl.textContent = '';
-  login(account);
+  authBusy(true); errEl.textContent = '';
+  const {error} = await sb.auth.signInWithPassword({email, password});
+  if(error){ authBusy(false); errEl.textContent = authErrorText(error); return; }
+  await enterApp();
 }
 function login(user){
   currentRole = user.role;
@@ -403,16 +565,20 @@ function login(user){
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('whoName').textContent = user.name;
-  document.getElementById('whoRole').textContent = user.role.replace('_',' / ');
+  document.getElementById('whoRole').textContent = ROLE_NAMES[user.role] || user.role;
   buildNav();
   const landing = user.role==='driver' ? 'myloads' : user.role==='customer' ? 'customerloads' : user.role==='safety' ? 'drivers' : 'dashboard';
   navigate(landing);
 }
-function logout(){
-  currentRole=null; currentUser=null;
-  renderAuth('signin');
-  document.getElementById('login').style.display='flex';
-  document.getElementById('app').style.display='none';
+async function logout(){
+  if(saveState==='pending' || saveState==='saving'){ clearTimeout(saveTimer); await flushSave(); }
+  if(rtChannel){ sb.removeChannel(rtChannel); rtChannel = null; }
+  try{ await sb.auth.signOut(); }catch(e){}
+  currentRole = null; currentUser = null; lastNavKey = null; navRoot = null;
+  DB = emptyDB(); synced = new Map(); sortOf = new Map();
+  closeDynOverlay(); hideRefreshToast();
+  document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));
+  renderLogin();
 }
 
 /* ---------- NAV ---------- */
@@ -438,8 +604,13 @@ function setActiveNav(key){
 }
 
 function navigate(key){
+  lastNavKey = key;
   setActiveNav(key);
   const main = document.getElementById('main');
+  renderView(key, main);
+  navRoot = main.firstElementChild;
+}
+function renderView(key, main){
   if(key==='dashboard') return renderDashboard(main);
   if(key==='loads') return renderLoadNumbers(main);
   if(key==='dispatch') return renderDispatch(main);
@@ -640,7 +811,7 @@ function renderLoadNumbersTable(){
       <td>${fmtMoney(l.rate)}</td>
       <td>${fmtDateOnly(l.pickupAt)}</td>
       <td>${fmtDateOnly(l.deliveryAt)}</td>
-      <td>${l.miles} mi</td>
+      <td>${l.miles||0} mi</td>
       <td style="text-align:center;"><button class="btn small secondary" onclick="event.stopPropagation(); deleteLoad('${l.id}')" style="color:var(--danger);padding:4px 8px;font-size:11px;">Delete</button></td>
     </tr>
   `).join('');
@@ -658,11 +829,11 @@ function renderDispatchTable(){
   document.getElementById('loadsBody').innerHTML = rows.map(l=>`
     <tr onclick="openModal('${l.id}')" style="cursor:pointer;">
       <td class="mono">${esc(l.id)}${l.refNum?'<div class="mono" style="font-size:11px;">Ref '+esc(l.refNum)+'</div>':''}</td>
-      <td>${l.pickupLoc} → ${l.deliveryLoc}<div class="mono">${l.miles} mi</div></td>
+      <td>${l.pickupLoc} → ${l.deliveryLoc}<div class="mono">${l.miles||0} mi</div></td>
       <td>${fmtDate(l.pickupAt)}</td>
       <td>${fmtDate(l.deliveryAt)}</td>
       <td>${custName(l.shipperId)}${l.brokerId?'<div class="mono">via '+custName(l.brokerId)+'</div>':''}</td>
-      <td>${l.equipment.replace('_',' ')}</td>
+      <td>${String(l.equipment||'—').replace('_',' ')}</td>
       <td>${driverName(l.driverId)}</td>
       <td>${fmtMoney(l.rate)}</td>
       <td style="display:flex;gap:6px;align-items:center;"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span>${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher') ? '<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="event.stopPropagation(); deleteLoad(\''+l.id+'\')">Delete</button>' : ''}</td>
@@ -686,6 +857,7 @@ function openModal(loadId){
       if(d.payType==='per_mile') rateInfo = ` ($${d.payRate}/mi)`;
       else if(d.payType==='per_hour') rateInfo = ` ($${d.payRate}/hr)`;
       else if(d.payType==='percentage') rateInfo = ` (${d.payRate}%)`;
+      else if(d.payType==='salary') rateInfo = ` ($${d.payRate}/wk salary)`;
     }
     return `<option value="${d.id}" ${l&&l.driverId===d.id?'selected':''}>${d.name}${d.employeeId ? ' ('+d.employeeId+')' : ''}${rateInfo}</option>`;
   }).join('');
@@ -731,9 +903,9 @@ function openModal(loadId){
 
     ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher' || currentUser.role === 'accounting') ? `
     <div class="section-divider">Documents</div>
-    <div class="field"><label>Rate Confirmation</label><div class="file-row"><input type="file" id="f_doc_ratecon" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.ratecon?'<span class="file-chip">'+l.docs.ratecon+'</span>':''}</div></div>
-    <div class="field"><label>BOL</label><div class="file-row"><input type="file" id="f_doc_bol" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.bol?'<span class="file-chip">'+l.docs.bol+'</span>':''}</div></div>
-    <div class="field"><label>POD</label><div class="file-row"><input type="file" id="f_doc_pod" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.pod?'<span class="file-chip">'+l.docs.pod+'</span>':''}</div></div>
+    <div class="field"><label>Rate Confirmation</label><div class="file-row"><input type="file" id="f_doc_ratecon" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&(l.docs||{}).ratecon?'<span class="file-chip">'+(l.docs||{}).ratecon+'</span>':''}</div></div>
+    <div class="field"><label>BOL</label><div class="file-row"><input type="file" id="f_doc_bol" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&(l.docs||{}).bol?'<span class="file-chip">'+(l.docs||{}).bol+'</span>':''}</div></div>
+    <div class="field"><label>POD</label><div class="file-row"><input type="file" id="f_doc_pod" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&(l.docs||{}).pod?'<span class="file-chip">'+(l.docs||{}).pod+'</span>':''}</div></div>
     ` : ''}
 
     <div class="section-divider">Notes</div>
@@ -852,7 +1024,7 @@ function renderDriverLoads(main, completedOnly){
       <div class="lc-top"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span><span class="mono">${l.id}</span></div>
       <div class="lc-route">${l.pickupLoc} → ${l.deliveryLoc}</div>
       <div class="lc-meta">
-        <span>Pickup: ${fmtDate(l.pickupAt)}</span><span>Delivery: ${fmtDate(l.deliveryAt)}</span><span>${l.miles} mi</span>
+        <span>Pickup: ${fmtDate(l.pickupAt)}</span><span>Delivery: ${fmtDate(l.deliveryAt)}</span><span>${l.miles||0} mi</span>
       </div>
 
       <div style="margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);">
@@ -869,6 +1041,7 @@ function renderDriverLoads(main, completedOnly){
           if(driver.payType === 'per_mile') payment = (l.miles || 0) * (driver.payRate || 0);
           else if(driver.payType === 'per_hour') payment = (l.hours || (l.miles||0)/60) * (driver.payRate || driver.hourlyRate || 0);
           else if(driver.payType === 'percentage') payment = l.rate * ((driver.payRate || 0) / 100);
+          else if(driver.payType === 'salary') return 'Weekly salary';
           return fmtMoney(payment);
         })()}</div>
         <div style="font-size:11px;color:var(--dim);margin-top:6px;">
@@ -877,7 +1050,9 @@ function renderDriverLoads(main, completedOnly){
             if(!driver) return '';
             if(driver.payType === 'per_mile') return l.miles + ' miles × $' + Number(driver.payRate||0).toFixed(2) + '/mi';
             else if(driver.payType === 'per_hour') return (l.hours ? l.hours.toFixed(1) : '~' + ((l.miles || 0)/60).toFixed(1)) + ' hours × $' + Number(driver.payRate || driver.hourlyRate || 0).toFixed(2) + '/hr';
+            else if(driver.classification === 'owner_operator_1099') return Number(driver.payRate||0).toFixed(0) + '% of load rate, before dispatch fee, fuel and other deductions — see your settlement';
             else if(driver.payType === 'percentage') return Number(driver.payRate||0).toFixed(0) + '% of load rate';
+            else if(driver.payType === 'salary') return '$' + Number(driver.payRate||0).toFixed(2) + ' per week, paid on your settlement';
             return '';
           })()}
         </div>
@@ -888,9 +1063,9 @@ function renderDriverLoads(main, completedOnly){
         <select onchange="driverUpdateStatus('${l.id}',this.value)" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;">
           ${STATUSES.filter(s=>['assigned','dispatched','at_pickup','loaded','in_transit','at_delivery','delivered'].includes(s)).map(s=>`<option value="${s}" ${l.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}
         </select>
-        <button class="btn small secondary" onclick="driverUploadDoc('${l.id}','bol')">Upload BOL${l.docs.bol?' ✓':''}</button>
-        <button class="btn small secondary" onclick="driverUploadDoc('${l.id}','pod')">Upload POD${l.docs.pod?' ✓':''}</button>
-      </div>` : `<div class="lc-meta"><span>${l.docs.pod?'POD on file':'No POD'}</span></div>`}
+        <button class="btn small secondary" onclick="driverUploadDoc('${l.id}','bol')">Upload BOL${(l.docs||{}).bol?' ✓':''}</button>
+        <button class="btn small secondary" onclick="driverUploadDoc('${l.id}','pod')">Upload POD${(l.docs||{}).pod?' ✓':''}</button>
+      </div>` : `<div class="lc-meta"><span>${(l.docs||{}).pod?'POD on file':'No POD'}</span></div>`}
     </div>`
   ).join('') : '<div class="empty">No loads to show.</div>'}
   </div>`;
@@ -1007,7 +1182,7 @@ function renderCustomerLoads(main){
     <div class="load-card">
       <div class="lc-top"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span><span class="mono">${l.id}</span></div>
       <div class="lc-route">${l.pickupLoc} → ${l.deliveryLoc}</div>
-      <div class="lc-meta"><span>Pickup: ${fmtDate(l.pickupAt)}</span><span>Delivery: ${fmtDate(l.deliveryAt)}</span><span>${l.docs.pod?'POD available':'POD pending'}</span></div>
+      <div class="lc-meta"><span>Pickup: ${fmtDate(l.pickupAt)}</span><span>Delivery: ${fmtDate(l.deliveryAt)}</span><span>${(l.docs||{}).pod?'POD available':'POD pending'}</span></div>
     </div>`).join('') || '<div class="empty">No shipments yet.</div>'}</div>`;
 }
 function renderCustomerInvoices(main){
@@ -1042,7 +1217,7 @@ function renderLoadBoard(main){
       <h3>Your Open Loads</h3>
       ${available.length ? available.map(l=>{
         const posting = postings.find(p=>p.loadId===l.id && p.status==='posted');
-        return `<div class="row-item"><div><div class="t1">${l.id} — ${l.pickupLoc} → ${l.deliveryLoc}</div><div class="t2">${fmtMoney(l.rate)} · ${l.miles} mi · ${l.equipment.replace('_',' ')}</div></div>
+        return `<div class="row-item"><div><div class="t1">${l.id} — ${l.pickupLoc} → ${l.deliveryLoc}</div><div class="t2">${fmtMoney(l.rate)} · ${l.miles||0} mi · ${String(l.equipment||'—').replace('_',' ')}</div></div>
         <div>${posting ? pillColor(...LB_STATUS_COLOR.posted,'Posted to '+posting.board) : `<button class="btn small" onclick="postToBoard('${l.id}')">Post to Boards</button>`}</div></div>`;
       }).join('') : '<div class="empty">No available loads to post right now.</div>'}
     </div>
@@ -1060,7 +1235,7 @@ function renderLoadBoard(main){
     <h3>Live Marketplace Feed</h3>
     <div class="table-wrap" style="border:none;"><table><thead><tr><th>Board</th><th>Broker</th><th>Route</th><th>Pickup</th><th>Equip.</th><th>Rate</th><th></th></tr></thead>
     <tbody>${DB.loadBoardListings.filter(x=>!x.imported).map(x=>`
-      <tr><td><strong>${x.board}</strong></td><td>${x.broker}</td><td>${x.origin} → ${x.destination}<div class="mono">${x.miles} mi</div></td><td>${fmtDate(x.pickupDate)}</td><td>${x.equipment.replace('_',' ')}</td><td>${fmtMoney(x.rate)}</td>
+      <tr><td><strong>${x.board}</strong></td><td>${x.broker}</td><td>${x.origin} → ${x.destination}<div class="mono">${x.miles} mi</div></td><td>${fmtDate(x.pickupDate)}</td><td>${String(x.equipment||'—').replace('_',' ')}</td><td>${fmtMoney(x.rate)}</td>
       <td><button class="btn small" onclick="importListing('${x.id}')">Import to Dispatch</button></td></tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px;">No external listings match your lanes right now.</td></tr>`}</tbody></table></div>
   </div>`;
 }
@@ -1144,7 +1319,7 @@ function renderFactoring(main){
     <h3>Invoiced Loads</h3>
     ${invoiced.length ? invoiced.map(l=>{
       const sub = subs.find(s=>s.loadId===l.id);
-      const docsReady = l.docs.ratecon && l.docs.bol && l.docs.pod;
+      const docsReady = (l.docs||{}).ratecon && (l.docs||{}).bol && (l.docs||{}).pod;
       return `<div class="row-item"><div><div class="t1">${l.id} — ${custName(l.shipperId)}</div><div class="t2">${fmtMoney(l.rate)} · ${docsReady?'docs complete':'missing docs — funding may be delayed'}</div></div>
       <div>${sub ? pillColor(...FACT_STATUS_COLOR[sub.status], FACT_STATUS_LABEL[sub.status]) : `<button class="btn small" onclick="submitFactoring('${l.id}')">Submit to Factoring</button>`}</div></div>`;
     }).join('') : '<div class="empty">No invoiced loads waiting on factoring.</div>'}
@@ -1222,7 +1397,17 @@ function openEntityModal(title, sub, fields, values, onSave){
   document.getElementById('entityOverlay').classList.add('open');
 }
 function closeEntityModal(){ document.getElementById('entityOverlay').classList.remove('open'); entitySaveCallback=null; }
-function saveEntityModal(){ if(entitySaveCallback && entitySaveCallback()===false) return; closeEntityModal(); }
+async function saveEntityModal(){
+  if(!entitySaveCallback) return closeEntityModal();
+  const btn = document.querySelector('#entityOverlay .modal-actions .btn:not(.secondary)');
+  let r = entitySaveCallback();
+  if(r && typeof r.then==='function'){
+    if(btn){ btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Saving\u2026'; }
+    try{ r = await r; } finally { if(btn){ btn.disabled = false; btn.textContent = btn.dataset.label || 'Save'; } }
+  }
+  if(r===false) return;
+  closeEntityModal();
+}
 function expPill(dateStr){
   const dd = daysUntil(dateStr);
   const color = dd<=7 ? ['#3B1E1E','#E5555C'] : dd<=30 ? ['#4A3A1E','#F0C878'] : ['#1B3B27','#5FE39A'];
@@ -1359,7 +1544,7 @@ function renderDrivers(main){
   }).join('')}</tbody></table></div>
   `;
 }
-function deleteDriver(driverId){
+async function deleteDriver(driverId){
   if(!currentUser || currentUser.role !== 'owner_admin') return;
   const d = DB.drivers.find(x=>x.id===driverId);
   if(!d) return;
@@ -1372,7 +1557,8 @@ function deleteDriver(driverId){
   if(!confirm(msg)) return;
 
   activeLoads.forEach(l=>{ l.driverId = null; if(['assigned','dispatched'].includes(l.status)) l.status = 'available'; });
-  linkedUsers.forEach(u=>{ u.driverId = null; });
+  for(const u of linkedUsers){ try{ await callAdmin('update', {id:u.id, driverId:''}); }catch(e){ alert(`Couldn't unlink login ${u.email}: ${e.message}`); } }
+  if(linkedUsers.length) loadUsers().catch(()=>{});
   (DB.ownerOperators||[]).forEach(o=>{ if(o.driverId===driverId) o.driverId = null; });
   DB.drivers = DB.drivers.filter(x=>x.id!==driverId);
   saveDB();
@@ -1409,6 +1595,8 @@ function updateDriverPaymentInfo(){
       paymentInfo += `Rate: ${driver.payRate}% of load<br>`;
       const rate = parseFloat(document.getElementById('f_rate')?.value || 0);
       if(rate > 0) paymentInfo += `Expected: $${(rate * driver.payRate / 100).toFixed(2)}`;
+    } else if(driver.payType === 'salary'){
+      paymentInfo += `Weekly salary: $${driver.payRate} — not paid per load`;
     }
   } else {
     const oo = ooForDriver(driver.id);
@@ -1433,7 +1621,7 @@ function toggleDriverGroups(){
   document.querySelectorAll('#entityFormGrid .grp-w2').forEach(e=>e.style.display = cls==='w2_employee' ? '' : 'none');
   document.querySelectorAll('#entityFormGrid .grp-oo').forEach(e=>e.style.display = cls==='owner_operator_1099' ? '' : 'none');
   const lbl = document.querySelector('#ent_payRate')?.previousElementSibling;
-  if(lbl) lbl.textContent = pt==='per_mile' ? 'Pay Rate ($ per mile)' : pt==='per_hour' ? 'Pay Rate ($ per hour)' : 'Pay Rate (% of line haul)';
+  if(lbl) lbl.textContent = pt==='per_mile' ? 'Pay Rate ($ per mile)' : pt==='per_hour' ? 'Pay Rate ($ per hour)' : pt==='salary' ? 'Salary ($ per week)' : 'Pay Rate (% of line haul)';
 }
 function openDriverModal(id){
   const d = id ? DB.drivers.find(x=>x.id===id) : null;
@@ -1455,7 +1643,7 @@ function openDriverModal(id){
     {id:'mvr',label:'MVR Notes (include "review" to flag an alert)',span2:true},
 
     {type:'divider',label:'Driver Pay — used on settlements',group:'w2'},
-    {id:'payType',label:'Pay Type',type:'select',group:'w2',options:[{value:'per_mile',label:'Per mile'},{value:'percentage',label:'Percentage of load'},{value:'per_hour',label:'Per hour'}]},
+    {id:'payType',label:'Pay Type',type:'select',group:'w2',options:[{value:'per_mile',label:'Per mile'},{value:'percentage',label:'Percentage of load'},{value:'per_hour',label:'Per hour'},{value:'salary',label:'Weekly salary'}]},
     {id:'payRate',label:'Pay Rate',type:'number',group:'w2'},
 
     {type:'divider',label:'Owner-Operator Agreement — used on settlements',group:'oo'},
@@ -1556,6 +1744,7 @@ function payBasisLabel(d, oo){
   if(d.payType==='per_mile') return `$${rate.toFixed(2)} per mile`;
   if(d.payType==='per_hour') return `$${rate.toFixed(2)} per hour`;
   if(d.payType==='percentage') return `${rate}% of line haul`;
+  if(d.payType==='salary') return `$${rate.toFixed(2)} weekly salary`;
   return 'Pay rate not set';
 }
 function calcLoadPay(d, l, oo){
@@ -1645,10 +1834,11 @@ function openNewSettlement(){
       <div class="section-divider">Loads in Period</div>
       <div class="span2" id="stlLoads" style="border:1px solid var(--border);border-radius:8px;max-height:230px;overflow-y:auto;padding:0 10px;"><div class="empty">Choose a driver.</div></div>
       <div class="section-divider">Additional Earnings</div>
+      <div class="field" id="stlSalaryField" style="display:none;"><label>Salary for this period ($)</label><input type="number" step="0.01" min="0" id="stl_salary" value="0" oninput="stlRecalc()"><div id="stlSalaryHint" style="font-size:11.5px;color:var(--dim);margin-top:4px;"></div></div>
       ${money('stl_bonus','Bonus ($)')}${money('stl_reimb','Reimbursements — lumper, tolls, etc. ($)')}
       <div class="section-divider">Deductions</div>
       <div class="field"><label>Dispatch Fee (% of freight gross)</label><input type="number" step="0.1" min="0" id="stl_dispatchPct" value="0" oninput="stlRecalc()"></div>
-      ${money('stl_fuelAdvance','Fuel Advance / Fuel Card ($)')}
+      <div class="field"><label>Fuel ($) — advances, fuel card, or fuel expenses on these loads</label><input type="number" step="0.01" min="0" id="stl_fuelAdvance" value="0" oninput="stlRecalc()"><div id="stlFuelHint" style="font-size:11.5px;color:var(--dim);margin-top:4px;"></div></div>
       ${money('stl_insurance','Insurance ($)')}${money('stl_eld','ELD / Tech Fee ($)')}
       ${money('stl_trailer','Trailer Rental ($)')}${money('stl_maint','Maintenance / Escrow ($)')}
       ${money('stl_other','Other Deductions ($)')}
@@ -1691,6 +1881,20 @@ function stlRefresh(driverChanged){
   const start = g('stlStart').value, end = g('stlEnd').value;
   if(start && end && end < start){ box.innerHTML = '<div class="empty" style="color:var(--danger);">Period end is before the start date.</div>'; stlRecalc(); return; }
   const loads = stlEligibleLoads(d.id, start, end);
+  // weekly salary: suggest salary × weeks in the period
+  const salaried = !oo && d.payType==='salary';
+  g('stlSalaryField').style.display = salaried ? '' : 'none';
+  if(salaried){
+    const days = start && end ? Math.round((new Date(end+'T12:00:00') - new Date(start+'T12:00:00'))/86400000) + 1 : 7;
+    const weeks = Math.max(1, Math.round(days/7));
+    g('stl_salary').value = r2((Number(d.payRate)||0) * weeks);
+    g('stlSalaryHint').textContent = `$${(Number(d.payRate)||0).toFixed(2)}/week × ${weeks} week${weeks===1?'':'s'} — adjust if needed`;
+  } else g('stl_salary').value = 0;
+  // owner-operators: fuel recorded as expenses on these loads is deducted
+  const isOO = !!oo || d.classification==='owner_operator_1099';
+  const fuelOnLoads = r2((DB.expenses||[]).filter(e=>e.category==='fuel' && e.loadId && loads.some(l=>l.id===e.loadId)).reduce((a,e)=>a+(Number(e.amount)||0),0));
+  if(isOO){ g('stl_fuelAdvance').value = fuelOnLoads; g('stlFuelHint').textContent = fuelOnLoads ? `Includes $${fuelOnLoads.toFixed(2)} of fuel expenses recorded on these loads` : ''; }
+  else { g('stl_fuelAdvance').value = 0; g('stlFuelHint').textContent = ''; }
   const hourlyMissing = !oo && d.payType==='per_hour' && loads.some(l=>!l.hours);
   box.innerHTML = loads.length ? loads.map(l=>`
     <label class="stl-line"><input type="checkbox" class="stl-load" value="${esc(l.id)}" checked onchange="stlRecalc()">
@@ -1714,8 +1918,8 @@ function stlCompute(){
       lineHaul:Number(l.rate)||0, accessorials:r2(loadGross(l)-(Number(l.rate)||0)), gross:r2(loadGross(l)), pay:calcLoadPay(d,l,oo)};
   });
   const freightGross = r2(lines.reduce((a,x)=>a+x.gross,0));
-  const earnings = {loadPay:r2(lines.reduce((a,x)=>a+x.pay,0)), bonus:num('stl_bonus'), reimbursements:num('stl_reimb')};
-  const grossPay = r2(earnings.loadPay + earnings.bonus + earnings.reimbursements);
+  const earnings = {loadPay:r2(lines.reduce((a,x)=>a+x.pay,0)), salary: document.getElementById('stlSalaryField')?.style.display==='none' ? 0 : num('stl_salary'), bonus:num('stl_bonus'), reimbursements:num('stl_reimb')};
+  const grossPay = r2(earnings.loadPay + earnings.salary + earnings.bonus + earnings.reimbursements);
   const dispatchPct = num('stl_dispatchPct');
   const deductions = {dispatchFee:r2(freightGross*dispatchPct/100), fuelAdvance:num('stl_fuelAdvance'), insurance:num('stl_insurance'), eldFee:num('stl_eld'),
     trailerRental:num('stl_trailer'), maintenance:num('stl_maint'), other:num('stl_other')};
@@ -1773,7 +1977,7 @@ function openSettlementStatement(id, fromPortal){
   const row = (label, val, style='') => `<div class="row-item" style="${style}"><div class="t1">${label}</div><div>${val}</div></div>`;
   const dd = s.deductions || {};
   const dedRows = [
-    ['Dispatch Fee'+(s.dispatchPct?` (${s.dispatchPct}%)`:''), dd.dispatchFee], ['Fuel Advance / Fuel Card', dd.fuelAdvance], ['Insurance', dd.insurance],
+    ['Dispatch Fee'+(s.dispatchPct?` (${s.dispatchPct}%)`:''), dd.dispatchFee], ['Fuel', dd.fuelAdvance], ['Insurance', dd.insurance],
     ['ELD / Tech Fee', dd.eldFee], ['Trailer Rental', dd.trailerRental], ['Maintenance / Escrow', dd.maintenance],
     ['Other'+(s.otherDeductionNote?' — '+esc(s.otherDeductionNote):''), dd.other],
   ].filter(([,v])=>v);
@@ -1809,6 +2013,7 @@ function openSettlementStatement(id, fromPortal){
   <div class="dash-cols">
     <div class="panel"><h3>Earnings</h3>
       ${row('Load Pay ('+(s.lines||[]).length+' load'+((s.lines||[]).length===1?'':'s')+')', fmtMoney2(s.earnings?.loadPay))}
+      ${s.earnings?.salary ? row('Salary', fmtMoney2(s.earnings.salary)) : ''}
       ${s.earnings?.bonus ? row('Bonus', fmtMoney2(s.earnings.bonus)) : ''}
       ${s.earnings?.reimbursements ? row('Reimbursements', fmtMoney2(s.earnings.reimbursements)) : ''}
       ${row('GROSS PAY', `<b style="color:var(--accent);">${fmtMoney2(s.grossPay)}</b>`, 'font-weight:700;font-size:15px;')}
@@ -2093,279 +2298,265 @@ function submitEditDocument(docId){
   renderDocuments(document.getElementById('main'));
 }
 
-/* ---------- EMAIL DELIVERY + PASSWORD RESET ---------- */
-const CODE_TTL_MIN = 15, CODE_MAX_TRIES = 5;
-function emailCfg(){ return DB.emailConfig || {}; }
-function emailLive(){ const c = emailCfg(); return !!(c.enabled && c.serviceId && c.templateId && c.publicKey); }
-function genCode(){ const a = new Uint32Array(1); crypto.getRandomValues(a); return String(a[0] % 1000000).padStart(6,'0'); }
-const ROLE_NAMES = {owner_admin:'Owner / Admin', dispatcher:'Dispatcher', accounting:'Accounting', safety:'Safety', driver:'Driver', customer:'Customer'};
-function signInLink(){ return /^https?:/.test(location.protocol) ? location.origin + location.pathname : 'https://DriveModeTMS.com'; }
-async function sendWelcomeEmail(user){
-  const c = emailCfg();
-  const message = `Hi ${user.name},\n\nYour Drive Mode TMS account has been created.\n\nSign-in email: ${user.email}\nRole: ${ROLE_NAMES[user.role]||user.role}\nSign in at: ${signInLink()}\n\nYour administrator will give you your password. You can also set your own anytime with "Forgot password?" on the sign-in screen.\n\nIf you weren't expecting this account, reply to this email or contact ${c.fromName||'Drive Mode Logistics'}.`;
-  const r = await sendEmail(user.email, 'Your Drive Mode TMS account is ready', message);
-  user.welcomeEmail = r.demo ? 'not_sent_demo' : r.ok ? 'sent' : 'failed';
-  user.welcomeEmailAt = new Date().toISOString();
-  saveDB();
-  return r;
-}
-async function resendWelcome(userId){
-  const u = DB.users.find(x=>x.id===userId); if(!u) return;
-  if(!emailLive()){ alert('Email Delivery is in demo mode, so no email can be sent.\n\nTurn it on under Users → ✉ Email Delivery.'); return; }
-  const r = await sendWelcomeEmail(u);
-  alert(r.ok ? `✓ Confirmation email sent to ${u.email}` : `✗ Couldn't send the email: ${r.error}`);
-  renderUsers(document.getElementById('main'));
-}
-async function sendEmail(to, subject, message){
-  if(!emailLive()) return {ok:true, demo:true};
-  const c = emailCfg();
-  try{
-    const r = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({service_id:c.serviceId, template_id:c.templateId, user_id:c.publicKey,
-        template_params:{to_email:to, subject, message, app_name:'Drive Mode TMS', from_name:c.fromName||'Drive Mode TMS'}})
-    });
-    if(!r.ok) return {ok:false, error: (await r.text().catch(()=>'')) || ('HTTP '+r.status)};
-    return {ok:true};
-  }catch(e){ return {ok:false, error:String(e.message||e)}; }
-}
-async function issueCode(user, purpose){
-  const code = genCode();
-  user[purpose+'Code'] = code;
-  user[purpose+'Expires'] = Date.now() + CODE_TTL_MIN*60000;
-  user[purpose+'Tries'] = 0;
-  saveDB();
-  const subject = 'Reset your Drive Mode TMS password';
-  const message = `Hi ${user.name},\n\nYour Drive Mode TMS password reset code is: ${code}\n\nIt expires in ${CODE_TTL_MIN} minutes. If you didn't ask to reset your password, ignore this email — your password won't change.`;
-  const res = await sendEmail(user.email, subject, message);
-  return {...res, code};
-}
-function checkCode(user, purpose, entered){
-  const code = user[purpose+'Code'], exp = user[purpose+'Expires'];
-  if(!code || !exp) return 'Request a new code.';
-  if(Date.now() > exp) return 'This code has expired. Request a new one.';
-  if((user[purpose+'Tries']||0) >= CODE_MAX_TRIES) return 'Too many wrong attempts. Request a new code.';
-  if(String(entered).trim() !== code){ user[purpose+'Tries'] = (user[purpose+'Tries']||0)+1; saveDB(); return `Incorrect code. ${CODE_MAX_TRIES-user[purpose+'Tries']} tries left.`; }
-  delete user[purpose+'Code']; delete user[purpose+'Expires']; delete user[purpose+'Tries'];
-  return null;
-}
-function findUserByEmail(email){ const e = String(email||'').trim().toLowerCase(); return DB.users.find(u=>String(u.email||'').trim().toLowerCase()===e); }
-function maskEmail(e){ const [n,d] = String(e).split('@'); return (n.length<=2 ? n[0]+'*' : n.slice(0,2)+'*'.repeat(Math.min(6,n.length-2))) + '@' + d; }
-function deliveryNote(res){
-  if(!res) return '';
-  if(res.info) return `<div class="auth-msg bad">${esc(res.info)}</div>`;
-  if(!res.ok) return `<div class="auth-msg bad">Couldn't send the email: ${esc(res.error)}. Ask an admin to check Email Delivery settings.</div>`;
-  if(res.demo) return `<div class="auth-msg demo"><b>Demo mode</b> — email isn't set up yet, so the code is shown here: <span class="mono" style="font-size:15px;color:var(--text);letter-spacing:2px;">${res.code}</span></div>`;
-  return '';
-}
-
-/* ---- auth screens (sign in / verify / forgot / reset) ---- */
+/* ---- auth screens: sign in / forgot / set password / first admin / error ---- */
 let authState = {view:'signin'};
 function authShell(sub, body){
   return `<div class="login-logo"><div class="mark"></div><span>Drive Mode TMS</span></div>
   <div class="login-sub">${sub}</div>${body}`;
 }
+function authBusy(on){ document.querySelectorAll('#authCard .btn').forEach(b=>{ b.disabled = on; b.style.opacity = on ? .6 : 1; }); }
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function renderAuth(view, ctx){
   authState = Object.assign({view}, ctx||{});
   const card = document.getElementById('authCard');
   const enter = fn => `onkeydown="if(event.key==='Enter')${fn}()"`;
+  const msg = (authState.notice ? `<div class="auth-msg good">${esc(authState.notice)}</div>` : '') + (authState.error ? `<div class="auth-msg bad">${esc(authState.error)}</div>` : '');
   if(view==='signin'){
-    card.innerHTML = authShell('DriveModeTMS.com — sign in to your account', `
-      ${authState.notice ? `<div class="auth-msg good">${authState.notice}</div>` : ''}
-      <div class="field" style="margin-bottom:12px;"><label>Email</label><input id="loginEmail" type="email" autocomplete="username" placeholder="you@drivemodetms.com" value="${esc(authState.email||'')}" ${enter('attemptLogin')}></div>
+    card.innerHTML = authShell('DriveModeTMS.com — sign in to your account', `${msg}
+      <div class="field" style="margin-bottom:12px;"><label>Email</label><input id="loginEmail" type="email" autocomplete="username" placeholder="you@company.com" value="${esc(authState.email||'')}" ${enter('attemptLogin')}></div>
       <div class="field" style="margin-bottom:6px;"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" ${enter('attemptLogin')}></div>
       <div id="loginError" class="auth-err"></div>
       <button class="btn" style="width:100%;" onclick="attemptLogin()">Sign In</button>
       <div class="auth-links"><a href="#" onclick="event.preventDefault(); renderAuth('forgot',{email:document.getElementById('loginEmail').value})">Forgot password?</a></div>`);
   }
   else if(view==='forgot'){
-    card.innerHTML = authShell('Reset your password', `
-      <p class="auth-p">Enter your account email and we'll send you a code to reset your password.</p>
-      <div class="field" style="margin-bottom:6px;"><label>Email</label><input id="forgotEmail" type="email" placeholder="you@company.com" value="${esc(authState.email||'')}" ${enter('submitForgot')}></div>
+    card.innerHTML = authShell('Reset your password', authState.sent ? `
+      <div class="auth-msg good">If an account exists for <b>${esc(authState.email)}</b>, we’ve emailed it a link to reset the password.</div>
+      <p class="auth-p">Open the email and click the link. Check your spam folder if it doesn’t arrive within a few minutes. The link works once.</p>
+      <div class="auth-links"><a href="#" onclick="event.preventDefault(); renderAuth('forgot',{email:authState.email})">Send again</a><a href="#" onclick="event.preventDefault(); renderAuth('signin',{email:authState.email})">Back to sign in</a></div>` : `${msg}
+      <p class="auth-p">Enter your account email and we’ll send you a link to choose a new password.</p>
+      <div class="field" style="margin-bottom:6px;"><label>Email</label><input id="forgotEmail" type="email" autocomplete="username" placeholder="you@company.com" value="${esc(authState.email||'')}" ${enter('submitForgot')}></div>
       <div id="authErr" class="auth-err"></div>
-      <button class="btn" style="width:100%;" onclick="submitForgot()">Send Reset Code</button>
-      <div class="auth-links"><a href="#" onclick="event.preventDefault(); renderAuth('signin')">Back to sign in</a></div>`);
+      <button class="btn" style="width:100%;" onclick="submitForgot()">Email Me a Reset Link</button>
+      <div class="auth-links"><a href="#" onclick="event.preventDefault(); renderAuth('signin',{email:document.getElementById('forgotEmail').value})">Back to sign in</a></div>`);
   }
-  else if(view==='reset'){
-    card.innerHTML = authShell('Choose a new password', `
-      <p class="auth-p">If an account exists for <b>${esc(authState.email)}</b>, we sent it a 6-digit code.</p>
-      ${deliveryNote(authState.sendResult)}
-      <div class="field" style="margin-bottom:12px;"><label>Reset Code</label><input id="authCode" class="code-input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"></div>
-      <div class="field" style="margin-bottom:12px;"><label>New Password (min 8 characters)</label><input id="resetPw" type="password" autocomplete="new-password"></div>
-      <div class="field" style="margin-bottom:6px;"><label>Confirm New Password</label><input id="resetPw2" type="password" autocomplete="new-password" ${enter('submitReset')}></div>
+  else if(view==='setpw'){
+    const invite = authState.mode==='invite';
+    card.innerHTML = authShell(invite ? 'Welcome! Set a password to finish setting up your account.' : 'Choose a new password', `${msg}
+      <div class="field" style="margin-bottom:12px;"><label>New Password (min 8 characters)</label><input id="newPw" type="password" autocomplete="new-password"></div>
+      <div class="field" style="margin-bottom:6px;"><label>Confirm Password</label><input id="newPw2" type="password" autocomplete="new-password" ${enter('submitNewPassword')}></div>
       <div id="authErr" class="auth-err"></div>
-      <button class="btn" style="width:100%;" onclick="submitReset()">Reset Password</button>
-      <div class="auth-links"><a href="#" onclick="event.preventDefault(); submitForgot(authState.email)">Resend code</a><a href="#" onclick="event.preventDefault(); renderAuth('signin')">Back to sign in</a></div>`);
+      <button class="btn" style="width:100%;" onclick="submitNewPassword()">${invite ? 'Set Password & Sign In' : 'Save New Password'}</button>`);
   }
-  const first = card.querySelector('input'); if(first) setTimeout(()=>first.focus(),0);
+  else if(view==='setup'){
+    card.innerHTML = authShell('First-time setup — create the Owner / Admin account', `${msg}
+      <p class="auth-p">No accounts exist yet. The account you create here becomes the <b>Owner / Admin</b>. After that, new people can only join by invitation from the Users page.</p>
+      <div class="field" style="margin-bottom:12px;"><label>Your Name</label><input id="setupName" autocomplete="name"></div>
+      <div class="field" style="margin-bottom:12px;"><label>Email</label><input id="setupEmail" type="email" autocomplete="username"></div>
+      <div class="field" style="margin-bottom:12px;"><label>Password (min 8 characters)</label><input id="setupPw" type="password" autocomplete="new-password"></div>
+      <div class="field" style="margin-bottom:6px;"><label>Confirm Password</label><input id="setupPw2" type="password" autocomplete="new-password" ${enter('submitSetup')}></div>
+      <div id="authErr" class="auth-err"></div>
+      <button class="btn" style="width:100%;" onclick="submitSetup()">Create Admin Account</button>`);
+  }
+  else if(view==='confirm'){
+    card.innerHTML = authShell('Confirm your email', `
+      <div class="auth-msg good">We sent a confirmation link to <b>${esc(authState.email)}</b>.</div>
+      <p class="auth-p">Open it to activate your account, then sign in here. Check spam if you don’t see it.</p>
+      <div class="auth-links"><a href="#" onclick="event.preventDefault(); renderAuth('signin',{email:authState.email})">Go to sign in</a></div>`);
+  }
+  else if(view==='error'){
+    card.innerHTML = authShell('Something went wrong', `
+      <div class="auth-msg bad">${esc(authState.message||'Unknown error')}</div>
+      ${authState.retry ? `<button class="btn" style="width:100%;" onclick="location.reload()">Try Again</button>
+      <div class="auth-links"><a href="#" onclick="event.preventDefault(); logout()">Sign out</a></div>` : ''}`);
+  }
+  const first = card.querySelector('input'); if(first) setTimeout(()=>first.focus(), 0);
 }
-function authBusy(on){ document.querySelectorAll('#authCard .btn').forEach(b=>{ b.disabled=on; b.style.opacity=on?.6:1; }); }
-
-async function submitForgot(prefill){
-  const email = (prefill || document.getElementById('forgotEmail')?.value || '').trim().toLowerCase();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ const e=document.getElementById('authErr'); if(e) e.textContent='Enter a valid email address.'; return; }
+async function submitForgot(){
+  const email = (document.getElementById('forgotEmail').value||'').trim().toLowerCase();
+  const err = document.getElementById('authErr');
+  if(!EMAIL_RE.test(email)){ err.textContent = 'Enter a valid email address.'; return; }
   authBusy(true);
-  const u = findUserByEmail(email);
-  let res = null;
-  if(u && u.active) res = await issueCode(u, 'reset');
-  // Same screen whether or not the account exists, so the form can't be used to discover accounts.
-  // In demo mode there's no inbox, so the code (or a "no account" hint) is shown instead.
-  if(!u && !emailLive()) res = {info:'Demo mode: there is no account with that email in this browser. Check the spelling, or ask an admin to create the account.'};
-  if(u && !u.active) res = emailLive() ? null : {info:'Demo mode: this account is deactivated. Ask an admin to reactivate it.'};
-  renderAuth('reset', {email, sendResult:res});
+  const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: appUrl()});
+  if(error && /rate limit|too many|security purposes/i.test(error.message)){ authBusy(false); err.textContent = 'Too many reset emails were requested. Wait a few minutes and try again.'; return; }
+  if(error && /fetch|network/i.test(error.message)){ authBusy(false); err.textContent = friendlyError(error); return; }
+  renderAuth('forgot', {email, sent:true});   // same answer whether or not the account exists
 }
-function submitReset(){
-  const e = document.getElementById('authErr');
-  const pw = document.getElementById('resetPw').value.trim(), pw2 = document.getElementById('resetPw2').value.trim();
-  const u = findUserByEmail(authState.email);
-  if(!u || !u.active){ e.textContent = 'Incorrect code.'; return; }
-  if(pw.length < 8){ e.textContent = 'Password must be at least 8 characters.'; return; }
-  if(pw !== pw2){ e.textContent = 'Passwords do not match.'; return; }
-  const err = checkCode(u, 'reset', document.getElementById('authCode').value);
-  if(err){ e.textContent = err; return; }
-  u.password = pw; u.passwordChangedAt = new Date().toISOString();
-  saveDB();
-  renderAuth('signin', {email:u.email, notice:'Password updated. Sign in with your new password.'});
+async function submitNewPassword(){
+  const pw = document.getElementById('newPw').value, pw2 = document.getElementById('newPw2').value;
+  const err = document.getElementById('authErr');
+  if(pw.length < 8){ err.textContent = 'Password must be at least 8 characters.'; return; }
+  if(pw !== pw2){ err.textContent = 'Passwords do not match.'; return; }
+  authBusy(true);
+  const {error} = await sb.auth.updateUser({password: pw});
+  if(error){ authBusy(false); err.textContent = authErrorText(error); return; }
+  await enterApp();
+}
+async function submitSetup(){
+  const g = id => document.getElementById(id).value;
+  const name = g('setupName').trim(), email = g('setupEmail').trim().toLowerCase(), pw = g('setupPw'), pw2 = g('setupPw2');
+  const err = document.getElementById('authErr');
+  if(!name){ err.textContent = 'Enter your name.'; return; }
+  if(!EMAIL_RE.test(email)){ err.textContent = 'Enter a valid email address.'; return; }
+  if(pw.length < 8){ err.textContent = 'Password must be at least 8 characters.'; return; }
+  if(pw !== pw2){ err.textContent = 'Passwords do not match.'; return; }
+  authBusy(true);
+  const {data, error} = await sb.auth.signUp({email, password: pw, options:{data:{name}, emailRedirectTo: appUrl()}});
+  if(error){ authBusy(false); err.textContent = authErrorText(error); return; }
+  if(data && data.session) return enterApp();
+  renderAuth('confirm', {email});
 }
 
-/* ---- admin: email delivery settings + verification tools ---- */
-function openEmailSettings(){
-  const c = emailCfg();
-  openEntityModal('Email Delivery', 'Sends account confirmation emails and password-reset codes through EmailJS (emailjs.com). Your EmailJS template must use {{to_email}} as the recipient and {{subject}} and {{message}} in the email.', [
-    {id:'enabled',label:'Status',type:'select',options:[{value:'false',label:'Off — demo mode (codes shown on screen)'},{value:'true',label:'On — send real emails'}],span2:true},
-    {id:'serviceId',label:'EmailJS Service ID'},{id:'templateId',label:'EmailJS Template ID'},
-    {id:'publicKey',label:'EmailJS Public Key',span2:true},
-    {id:'fromName',label:'From Name',span2:true},
-    {id:'testTo',label:'Send a test email to (optional)',span2:true},
-  ], {enabled:String(!!c.enabled), serviceId:c.serviceId||'', templateId:c.templateId||'', publicKey:c.publicKey||'', fromName:c.fromName||'Drive Mode Logistics', testTo:currentUser?.email||''}, ()=>{
-    const g = k => document.getElementById('ent_'+k).value.trim();
-    const cfg = {enabled:g('enabled')==='true', serviceId:g('serviceId'), templateId:g('templateId'), publicKey:g('publicKey'), fromName:g('fromName')};
-    if(cfg.enabled && (!cfg.serviceId || !cfg.templateId || !cfg.publicKey)){ alert('Enter the Service ID, Template ID and Public Key to turn email on.'); return false; }
-    DB.emailConfig = cfg; saveDB();
-    const to = g('testTo');
-    if(cfg.enabled && to){
-      sendEmail(to, 'Drive Mode TMS test email', 'This is a test from Drive Mode TMS. Email delivery is working.').then(r=>{
-        alert(r.ok ? `✓ Test email sent to ${to}` : `✗ Test email failed: ${r.error}`);
-      });
-    }
-    renderUsers(document.getElementById('main'));
+/* ---------- IMPORT data saved in this browser by the old version ---------- */
+function legacyData(){
+  try{ const raw = localStorage.getItem(LEGACY_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+}
+function legacyCounts(data){
+  return COLLECTIONS.filter(c=>c!=='loadBoardConfig' && Array.isArray(data[c]) && data[c].length).map(c=>[c, data[c].length]);
+}
+const COLLECTION_LABEL = {loads:'loads', drivers:'drivers', trucks:'trucks', trailers:'trailers', customers:'customers', expenses:'expenses', factoringCompanies:'factoring companies', factoringSubmissions:'factoring submissions',
+  loadBoardPostings:'load board postings', loadBoardListings:'load board listings', ownerOperators:'owner-operator agreements', ownerOperatorSettlements:'old owner-operator settlements', driverSettlements:'driver settlements', w2Payrolls:'paystubs', documents:'documents'};
+function offerLegacyImport(manual){
+  const data = legacyData();
+  let dismissed = false; try{ dismissed = localStorage.getItem(LEGACY_KEY+'_import')==='done'; }catch(e){}
+  if(!data || (!manual && dismissed)) { if(manual) alert('No data from the old version was found in this browser.'); return; }
+  const counts = legacyCounts(data);
+  if(!counts.length){ if(manual) alert('No data from the old version was found in this browser.'); return; }
+  const hasData = COLLECTIONS.some(c=>c!=='loadBoardConfig' && DB[c].length);
+  if(!manual && hasData) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay open dyn-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-width:520px;">
+    <button class="close-x" onclick="closeDynOverlay()">✕</button>
+    <h2>Bring Over Your Data?</h2>
+    <div class="modal-sub">This browser still has data saved by the old version of Drive Mode TMS. Import it into your Supabase database so everyone on your team can see it.</div>
+    <div class="panel" style="margin:14px 0;padding:12px 16px;">${counts.map(([c,n])=>`<div class="row-item"><div class="t1">${COLLECTION_LABEL[c]||c}</div><div>${n}</div></div>`).join('')}</div>
+    <p class="auth-p" style="font-size:12.5px;">Includes any sample data that came with the demo (e.g. Marcus Reyes, loads L-1001–L-1007) — you can delete what you don’t need afterward. Records that already exist are skipped. User logins are not copied: invite people from the Users page.</p>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="dismissLegacyImport()">Don’t Ask Again</button>
+      <button class="btn secondary" onclick="closeDynOverlay()">Not Now</button>
+      <button class="btn" onclick="runLegacyImport()">Import</button>
+    </div></div>`;
+  document.body.appendChild(overlay);
+}
+function dismissLegacyImport(){ try{ localStorage.setItem(LEGACY_KEY+'_import','done'); }catch(e){} closeDynOverlay(); }
+function migrateLegacy(data){
+  (data.ownerOperators||[]).forEach(o=>{ if(o.driverId && !(data.drivers||[]).some(d=>d.id===o.driverId)) o.driverId = null; });
+  (data.drivers||[]).forEach(d=>{
+    if(typeof d.percentageRate==='number' && d.percentageRate>0 && d.percentageRate<1) d.percentageRate = d.payType==='percentage' ? d.payRate : Math.round(d.percentageRate*100);
   });
+  return data;
+}
+async function runLegacyImport(){
+  const data = migrateLegacy(legacyData() || {});
+  let added = 0;
+  COLLECTIONS.forEach(c=>{
+    if(!Array.isArray(data[c])) return;
+    const have = new Set(DB[c].map(x=>recIdOf(c,x)));
+    data[c].forEach(item=>{ const id = recIdOf(c,item); if(id && !have.has(id)){ DB[c].push(item); have.add(id); added++; } });
+  });
+  closeDynOverlay();
+  clearTimeout(saveTimer);
+  if(await flushSave()){
+    try{ localStorage.setItem(LEGACY_KEY+'_import','done'); }catch(e){}
+    alert(`✓ Imported ${added} record${added===1?'':'s'} into Supabase.`);
+    navigate(lastNavKey||'dashboard');
+  }
 }
 
-/* ---------- USER MANAGEMENT ---------- */
-function renderUsers(main){
-  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>User Management</h1><div class="desc">Create accounts, manage roles and permissions</div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn secondary" onclick="openEmailSettings()">✉ Email Delivery: ${emailLive()?'On':'Demo'}</button><button class="btn" onclick="openCreateUserModal()">+ New User</button></div></div>
-  ${!emailLive() ? '<div class="auth-msg demo" style="margin-bottom:16px;">Email delivery is in <b>demo mode</b>: account confirmation emails are not sent, and password-reset codes are shown on screen instead of emailed. Click “Email Delivery” to connect EmailJS.</div>' : ''}
-  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Confirmation Email</th><th>Status</th><th>Created</th><th></th></tr></thead>
-  <tbody>${DB.users.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td><span class="pill" style="background:var(--panel2);color:var(--text)">${u.role.replace('_',' / ')}</span></td>
-    <td>${u.welcomeEmail==='sent' ? pillColor('#173A24','#5FE39A','Sent '+fmtDateOnly(u.welcomeEmailAt)) : u.welcomeEmail==='failed' ? pillColor('#3B1E1E','#E5555C','Failed') : u.welcomeEmail==='not_sent_demo' ? pillColor('#4A3A1E','#F0C878','Not sent') : '<span style="color:var(--dim)">—</span>'}</td>
-    <td>${u.active?'<span class="pill" style="background:#173A24;color:#5FE39A">Active</span>':'<span class="pill" style="background:#3B1E1E;color:#E5555C">Inactive</span>'}</td><td>${u.createdAt ? fmtDateOnly(u.createdAt) : 'System'}</td>
-    <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button>${u.id!==currentUser?.id ? `<button class="btn small secondary" onclick="resendWelcome('${u.id}')">${u.welcomeEmail==='sent'?'Resend Email':'Send Email'}</button>` : ''}${currentUser && currentUser.role === 'owner_admin' && u.id !== currentUser.id ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteUser('${u.id}')">Delete</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+/* ---------- USER MANAGEMENT (Supabase accounts) ---------- */
+function userStatusPill(u){
+  if(!u.active) return pillColor('#3B1E1E','#E5555C','Deactivated');
+  if(!u.confirmedAt) return pillColor('#4A3A1E','#F0C878','Invitation sent');
+  return pillColor('#173A24','#5FE39A','Active');
 }
-function openCreateUserModal(){
-  openEntityModal('Create New User Account', 'Add a team member with role-based access', [
-    {id:'name',label:'Full Name',span2:true},
-    {id:'email',label:'Email Address',span2:true},
-    {id:'password',label:'Password (min 8 characters)',type:'password',span2:true},
-    {id:'confirmPassword',label:'Confirm Password',type:'password',span2:true},
-    {id:'role',label:'Role',type:'select',options:[
-      {value:'owner_admin',label:'Owner / Admin — Full access'},
-      {value:'dispatcher',label:'Dispatcher — Manage loads & assignments'},
-      {value:'accounting',label:'Accounting — Revenue & invoices'},
-      {value:'safety',label:'Safety — Compliance & alerts'},
-      {value:'driver',label:'Driver — Driver portal access'},
-      {value:'customer',label:'Customer — Customer portal access'},
-    ]},
+function userLinkText(u){
+  if(u.role==='driver') return u.driverId ? (DB.drivers.find(d=>d.id===u.driverId)?.name ? esc(DB.drivers.find(d=>d.id===u.driverId).name) : '<span style="color:var(--warn)">Driver removed</span>') : '<span style="color:var(--warn)">Not linked</span>';
+  if(u.role==='customer') return u.customerId ? (DB.customers.find(c=>c.id===u.customerId) ? esc(DB.customers.find(c=>c.id===u.customerId).name) : '<span style="color:var(--warn)">Customer removed</span>') : '<span style="color:var(--warn)">Not linked</span>';
+  return '<span style="color:var(--dim)">—</span>';
+}
+function renderUsers(main){
+  const legacy = legacyData(); let imported = false; try{ imported = localStorage.getItem(LEGACY_KEY+'_import')==='done'; }catch(e){}
+  const showImport = legacy && !imported && legacyCounts(legacy).length;
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>User Management</h1><div class="desc">Invite people and manage roles and access</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn secondary" onclick="refreshUsers()">↻ Refresh</button><button class="btn" onclick="openCreateUserModal()">+ Invite User</button></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Linked To</th><th>Status</th><th>Last Sign-in</th><th></th></tr></thead>
+  <tbody>${DB.users.map(u=>`<tr style="cursor:default;"><td>${esc(u.name)}${u.id===currentUser?.id?' <span style="color:var(--dim);font-size:11px;">(you)</span>':''}</td><td>${esc(u.email)}</td>
+    <td><span class="pill" style="background:var(--panel2);color:var(--text)">${ROLE_NAMES[u.role]||esc(u.role)}</span></td>
+    <td>${userLinkText(u)}</td>
+    <td>${userStatusPill(u)}</td>
+    <td>${u.lastSignInAt ? fmtDateOnly(u.lastSignInAt) : '<span style="color:var(--dim)">Never</span>'}</td>
+    <td style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button>${u.id!==currentUser?.id && u.active && !u.confirmedAt ? `<button class="btn small secondary" title="Resend the invitation email" onclick="resendInvite('${u.id}', this)">Resend</button>` : ''}${u.id !== currentUser?.id ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteUser('${u.id}')">Delete</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">No users yet.</td></tr>'}</tbody></table></div>
+  <p class="auth-p" style="margin-top:14px;font-size:12.5px;">Invited people get an email from Supabase with a link to set their password. Until they open it, they show as “Invitation sent”.</p>`;
+}
+async function refreshUsers(){
+  try{ await loadUsers(); renderUsers(document.getElementById('main')); }catch(e){ alert(friendlyError(e)); }
+}
+const ROLE_OPTIONS_LONG = [
+  {value:'dispatcher',label:'Dispatcher — Manage loads & assignments'},
+  {value:'driver',label:'Driver — Driver portal access'},
+  {value:'customer',label:'Customer — Customer portal access'},
+  {value:'accounting',label:'Accounting — Settlements & factoring'},
+  {value:'safety',label:'Safety — Compliance & alerts'},
+  {value:'owner_admin',label:'Owner / Admin — Full access'},
+];
+function linkFields(){
+  return [
     {id:'driverId',label:'Linked Driver (for Driver role)',type:'select',options:[{value:'',label:'— None —'},...DB.drivers.map(d=>({value:d.id,label:d.name}))]},
     {id:'customerId',label:'Linked Customer (for Customer role)',type:'select',options:[{value:'',label:'— None —'},...DB.customers.map(c=>({value:c.id,label:c.name}))]},
-  ], {}, ()=>{
-    const g=k=>document.getElementById('ent_'+k).value;
-    const email = g('email').trim().toLowerCase();
-    const password = g('password').trim();
-    const confirmPassword = g('confirmPassword').trim();
-
-    if(!g('name').trim() || !email || !password) { alert('All fields required'); return false; }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('Enter a valid email address, like name@company.com'); return false; }
-    if(password.length < 8) { alert('Password must be at least 8 characters'); return false; }
-    if(password !== confirmPassword) { alert('Passwords do not match'); return false; }
-    if(DB.users.find(u=>String(u.email||'').trim().toLowerCase()===email)) { alert('Email already exists'); return false; }
-
-    const now = new Date().toISOString();
-    DB.users.push({
-      id:'u'+Date.now(),
-      email,
-      name:g('name').trim(),
-      password,
-      role:g('role'),
-      driverId:g('driverId')||null,
-      customerId:g('customerId')||null,
-      active:true,
-      createdAt:now,
-    });
-    saveDB();
-    const created = DB.users.find(u=>u.email===email);
-    renderUsers(document.getElementById('main'));
-    const base = `✅ User Created!\n\nEmail: ${email}\nPassword: (the one you just set)\n\nShare the password with the user securely.`;
-    if(!emailLive()){
-      created.welcomeEmail = 'not_sent_demo'; saveDB(); renderUsers(document.getElementById('main'));
-      alert(base + `\n\n✉ No confirmation email was sent — Email Delivery is in demo mode. Turn it on under Users → ✉ Email Delivery.`);
-    } else {
-      sendWelcomeEmail(created).then(r=>{
-        renderUsers(document.getElementById('main'));
-        alert(base + (r.ok ? `\n\n✉ Confirmation email sent to ${email}.` : `\n\n✗ The confirmation email could not be sent: ${r.error}\nYou can retry with “Resend Email” on the Users page.`));
-      });
-    }
+  ];
+}
+function openCreateUserModal(){
+  openEntityModal('Invite User', 'They’ll get an email with a link to set their own password and sign in.', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'email',label:'Email Address',span2:true},
+    {id:'role',label:'Role',type:'select',span2:true,options:ROLE_OPTIONS_LONG},
+    ...linkFields(),
+  ], {role:'dispatcher'}, async ()=>{
+    const g = k => document.getElementById('ent_'+k).value;
+    const name = g('name').trim(), email = g('email').trim().toLowerCase(), role = g('role');
+    if(!name || !email){ alert('Enter a name and email.'); return false; }
+    if(!EMAIL_RE.test(email)){ alert('Enter a valid email address, like name@company.com'); return false; }
+    if(DB.users.some(u=>u.email.toLowerCase()===email)){ alert('An account with that email already exists.'); return false; }
+    if(role==='driver' && !g('driverId') && !confirm('No driver record is linked, so this person will see an empty driver portal until you link one under Edit.\n\nSend the invitation anyway?')) return false;
+    if(role==='customer' && !g('customerId') && !confirm('No customer record is linked, so this person will see an empty customer portal until you link one under Edit.\n\nSend the invitation anyway?')) return false;
+    try{
+      await callAdmin('invite', {name, email, role, driverId:g('driverId')||null, customerId:g('customerId')||null});
+    }catch(e){ alert('✗ Invitation not sent.\n\n' + e.message); return false; }
+    await refreshUsers();
+    alert(`✉ Invitation sent to ${email}.\n\nThey’ll get an email with a link to set their password and sign in. Ask them to check spam if it doesn’t arrive.`);
   });
 }
 function openEditUserModal(id){
   const u = DB.users.find(x=>x.id===id);
   if(!u) return;
-  openEntityModal(`Edit User — ${u.name}`, '', [
+  const self = u.id===currentUser?.id;
+  openEntityModal(`Edit User — ${u.name}`, u.email, [
     {id:'name',label:'Full Name',span2:true},
-    {id:'role',label:'Role',type:'select',options:[
-      {value:'owner_admin',label:'Owner / Admin'},
-      {value:'dispatcher',label:'Dispatcher'},
-      {value:'accounting',label:'Accounting'},
-      {value:'safety',label:'Safety'},
-      {value:'driver',label:'Driver'},
-      {value:'customer',label:'Customer'},
-    ]},
-    {id:'active',label:'Status',type:'select',options:[{value:true,label:'Active'},{value:false,label:'Inactive'}]},
-    {id:'newPassword',label:'New Password (leave blank to keep current)',type:'password',span2:true},
-    {id:'driverId',label:'Linked Driver (for Driver role)',type:'select',options:[{value:'',label:'— None —'},...DB.drivers.map(d=>({value:d.id,label:d.name}))]},
-    {id:'customerId',label:'Linked Customer (for Customer role)',type:'select',options:[{value:'',label:'— None —'},...DB.customers.map(c=>({value:c.id,label:c.name}))]},
-  ], {name:u.name, role:u.role, active:u.active, driverId:u.driverId||'', customerId:u.customerId||''}, ()=>{
-    const g=k=>document.getElementById('ent_'+k).value;
-    const np = (g('newPassword')||'').trim();
-    if(np && np.length < 8){ alert('New password must be at least 8 characters'); return false; }
-    if(np) u.password = np;
-    u.name = g('name').trim();
-    u.role = g('role');
-    u.active = g('active')==='true' || g('active')===true;
-    u.driverId = g('driverId')||null;
-    u.customerId = g('customerId')||null;
-    if(u.id===currentUser?.id && !u.active){ alert("You can't deactivate your own account."); u.active = true; }
-    saveDB();
-    renderUsers(document.getElementById('main'));
+    {id:'role',label:'Role',type:'select',readonly:self,options:ROLE_OPTIONS_LONG.map(o=>({value:o.value,label:ROLE_NAMES[o.value]}))},
+    {id:'active',label:'Status',type:'select',readonly:self,options:[{value:'true',label:'Active'},{value:'false',label:'Deactivated — can’t sign in'}]},
+    {id:'newPassword',label:'Set New Password (optional — leave blank to keep)',type:'password',span2:true},
+    ...linkFields(),
+  ], {name:u.name, role:u.role, active:String(u.active), driverId:u.driverId||'', customerId:u.customerId||''}, async ()=>{
+    const g = k => document.getElementById('ent_'+k).value;
+    const np = g('newPassword');
+    if(np && np.length < 8){ alert('New password must be at least 8 characters.'); return false; }
+    const patch = {id:u.id, name:g('name').trim(), driverId:g('driverId'), customerId:g('customerId')};
+    if(!self){ patch.role = g('role'); patch.active = g('active')==='true'; }
+    if(np) patch.password = np;
+    try{ await callAdmin('update', patch); }catch(e){ alert('✗ Not saved.\n\n' + e.message); return false; }
+    if(self){ currentUser.name = patch.name; document.getElementById('whoName').textContent = patch.name; }
+    await refreshUsers();
+    if(np) alert(`✓ Password updated for ${u.email}. Share it with them securely (text or phone).`);
   });
 }
-
-function deleteUser(userId){
+async function resendInvite(id, btn){
+  const u = DB.users.find(x=>x.id===id); if(!u) return;
+  if(btn){ btn.disabled = true; btn.textContent = 'Sending…'; }
+  try{ await callAdmin('resend', {id}); alert(`✉ Invitation re-sent to ${u.email}.`); }
+  catch(e){ alert('✗ Not sent.\n\n' + e.message); }
+  refreshUsers();
+}
+async function deleteUser(userId){
   const u = DB.users.find(x=>x.id===userId);
   if(!u) return;
-  if(!confirm(`Delete user: ${u.name} (${u.email})?\n\nThis action cannot be undone.`)) return;
-
-  const idx = DB.users.findIndex(x=>x.id===userId);
-  if(idx > -1){
-    DB.users.splice(idx, 1);
-    saveDB();
-    alert(`✓ User "${u.name}" deleted successfully`);
-    renderUsers(document.getElementById('main'));
-  }
+  if(!confirm(`Delete user: ${u.name} (${u.email})?\n\nThey will no longer be able to sign in. Their loads, settlements and other records are kept.\n\nThis action cannot be undone.`)) return;
+  try{ await callAdmin('delete', {id:userId}); }catch(e){ alert('✗ Not deleted.\n\n' + e.message); return; }
+  await refreshUsers();
+  alert(`✓ User "${u.name}" deleted`);
 }
 
-renderLogin();
+boot();
 </script>
 </body>
 </html>
