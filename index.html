@@ -1,1 +1,2417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drive Mode TMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1720; --panel:#16212E; --panel2:#1C2A3A; --border:#28394C;
+  --text:#E9EEF4; --dim:#8FA3B8; --accent:#FF6A1A; --accent2:#3EA36E;
+  --warn:#F0A93B; --danger:#E5555C; --radius:10px;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+body{
+  margin:0; height:100%; background:var(--bg); color:var(--text);
+  font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.logo,.stat-num{font-family:'Big Shoulders Display',system-ui,sans-serif;}
+::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* ---------- LOGIN ---------- */
+#login{min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px;
+  background:radial-gradient(1200px 600px at 15% -10%, #1a2b3d 0%, var(--bg) 60%);}
+.login-card{width:100%; max-width:460px; background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:40px 36px;}
+.login-logo{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+.login-logo .mark{width:14px;height:34px;background:var(--accent);border-radius:3px; transform:skewX(-12deg);}
+.login-logo span{font-size:30px; font-weight:800; letter-spacing:0.5px;}
+.login-sub{color:var(--dim); font-size:14px; margin-bottom:28px;}
+.login-foot{margin-top:26px; font-size:12px; color:var(--dim); line-height:1.6;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none; min-height:100dvh;}
+.shell{display:flex; min-height:100dvh;}
+.sidebar{width:230px; flex:none; background:var(--panel); border-right:1px solid var(--border);
+  padding:22px 14px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100dvh; overflow-y:auto;}
+.sidebar .logo{display:flex; align-items:center; gap:8px; padding:0 8px 20px; font-size:20px; font-weight:800;}
+.sidebar .logo .mark{width:10px;height:22px;background:var(--accent);border-radius:2px; transform:skewX(-12deg);}
+.nav-item{padding:11px 12px; border-radius:8px; color:var(--dim); font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; border:1px solid transparent;}
+.nav-item:hover{background:var(--panel2); color:var(--text);}
+.nav-item.active{background:#2A2013; color:var(--accent); border-color:#4A3220;}
+.nav-item.locked{opacity:.4; cursor:default;}
+.nav-item.locked:hover{background:none; color:var(--dim);}
+.sidebar-foot{margin-top:auto; padding:12px 8px 0; border-top:1px solid var(--border);}
+.who{font-size:13px; font-weight:600;}
+.who-role{font-size:11px; color:var(--dim); text-transform:capitalize; margin-bottom:10px;}
+.logout-btn{width:100%; padding:9px; background:transparent; border:1px solid var(--border); color:var(--dim); border-radius:8px; cursor:pointer; font-size:13px;}
+.logout-btn:hover{color:var(--text); border-color:var(--accent);}
+
+.main{flex:1; min-width:0; padding:26px 30px 60px;}
+.topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;}
+.topbar h1{font-size:28px; margin:0; font-weight:700;}
+.topbar .desc{color:var(--dim); font-size:13px; margin-top:2px;}
+.btn{background:var(--accent); color:#1a0d02; border:none; padding:10px 18px; border-radius:8px; font-weight:700; font-size:13.5px; cursor:pointer; font-family:'Inter',sans-serif;}
+.btn:hover{filter:brightness(1.08);}
+.btn.secondary{background:var(--panel2); color:var(--text); border:1px solid var(--border);}
+.btn.small{padding:6px 12px; font-size:12.5px;}
+
+/* ---------- DASHBOARD ---------- */
+.kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px;}
+.kpi{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px;}
+.kpi .lbl{font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em;}
+.stat-num{font-size:30px; font-weight:700; margin:6px 0 2px;}
+.kpi .sub{font-size:12px; color:var(--dim);}
+.kpi.accent .stat-num{color:var(--accent);}
+.kpi.good .stat-num{color:var(--accent2);}
+.kpi.warn .stat-num{color:var(--warn);}
+.kpi.bad .stat-num{color:var(--danger);}
+
+.dash-cols{display:grid; grid-template-columns:1.3fr 1fr; gap:16px;}
+.panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px;}
+.panel h3{margin:0 0 14px; font-size:16px; font-weight:700;}
+.row-item{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:13.5px;}
+.row-item:last-child{border-bottom:none;}
+.row-item .t1{font-weight:600;}
+.row-item .t2{color:var(--dim); font-size:12px;}
+.pill{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap;}
+.alert-item{display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;}
+.alert-item:last-child{border-bottom:none;}
+.alert-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none;}
+.alert-dot.bad{background:var(--danger);} .alert-dot.warn{background:var(--warn);}
+.empty{color:var(--dim); font-size:13px; padding:8px 0;}
+
+/* ---------- DISPATCH TABLE ---------- */
+.filters{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.filters select,.filters input{background:var(--panel2); border:1px solid var(--border); color:var(--text); padding:8px 10px; border-radius:8px; font-size:13px; font-family:inherit;}
+.table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel);}
+table{width:100%; border-collapse:collapse; min-width:920px; font-size:13px;}
+th{text-align:left; padding:12px 14px; color:var(--dim); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--border); white-space:nowrap;}
+td{padding:12px 14px; border-bottom:1px solid var(--border); white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--panel2); cursor:pointer;}
+.mono{font-family:ui-monospace,monospace; color:var(--dim); font-size:12px;}
+
+/* status pill colors */
+.st-available{background:#28394C;color:#B9C9DA;}
+.st-assigned{background:#2A3B57;color:#8FB4F0;}
+.st-dispatched{background:#33325A;color:#B6A9F5;}
+.st-at_pickup{background:#4A3A1E;color:#F0C878;}
+.st-loaded{background:#4A3A1E;color:#F0C878;}
+.st-in_transit{background:#3A2E12;color:var(--accent);}
+.st-at_delivery{background:#1E3B33;color:#6FD3AE;}
+.st-delivered{background:#1B3B27;color:var(--accent2);}
+.st-documents_pending{background:#4A2A1E;color:#F09B78;}
+.st-invoiced{background:#2A2E4A;color:#9AA6F0;}
+.st-paid{background:#173A24;color:#5FE39A;}
+.st-cancelled{background:#3B1E1E;color:var(--danger);}
+
+/* ---------- MODAL ---------- */
+.overlay{display:none; position:fixed; inset:0; background:rgba(6,10,15,.72); z-index:50; align-items:flex-start; justify-content:center; padding:30px 16px; overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:var(--panel); border:1px solid var(--border); border-radius:14px; width:100%; max-width:720px; padding:26px 28px 30px; margin-bottom:40px;}
+.modal h2{margin:0 0 4px; font-size:22px;}
+.modal .modal-sub{color:var(--dim); font-size:13px; margin-bottom:20px;}
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px 14px;}
+.form-grid .span2{grid-column:1/-1;}
+.field label{display:block; font-size:12px; color:var(--dim); margin-bottom:5px; font-weight:600;}
+.field input,.field select,.field textarea{width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text); padding:9px 11px; border-radius:8px; font-size:13.5px; font-family:inherit;}
+.field textarea{resize:vertical; min-height:60px;}
+.section-divider{grid-column:1/-1; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); border-top:1px solid var(--border); padding-top:14px; margin-top:2px;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:22px;}
+.file-row{display:flex; align-items:center; gap:8px;}
+.file-row input[type=file]{font-size:11px;}
+.file-chip{font-size:11px; color:var(--accent2); background:#173A24; padding:3px 8px; border-radius:6px; white-space:nowrap;}
+.close-x{position:absolute; top:20px; right:20px; background:none; border:none; color:var(--dim); font-size:20px; cursor:pointer;}
+.modal-wrap{position:relative;}
+
+/* driver/customer simple views */
+.card-list{display:grid; gap:12px;}
+.load-card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px;}
+.load-card .lc-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.load-card .lc-route{font-size:14px; font-weight:600; margin-bottom:2px;}
+.load-card .lc-meta{font-size:12px; color:var(--dim); display:flex; gap:14px; flex-wrap:wrap; margin-top:8px;}
+.locked-msg{color:var(--dim); font-size:14px; background:var(--panel); border:1px dashed var(--border); border-radius:var(--radius); padding:26px; text-align:center;}
+
+/* ---------- MOBILE ---------- */
+.hamburger{display:none;}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ } }
+@media (max-width:880px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .dash-cols{grid-template-columns:1fr;}
+  .shell{flex-direction:column;}
+  .sidebar{width:100%; height:auto; position:sticky; top:0; z-index:30; flex-direction:row; align-items:center; padding:12px 14px; overflow-x:auto;}
+  .sidebar .logo{padding:0 12px 0 0;}
+  .nav-item{white-space:nowrap;}
+  .sidebar-foot{display:none;}
+  .main{padding:18px 16px 50px;}
+  .form-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login">
+  <div class="login-card">
+    <div class="login-logo"><div class="mark"></div><span>Drive Mode TMS</span></div>
+    <div class="login-sub">DriveModeTMS.com — sign in to your account</div>
+
+    <div class="field" style="margin-bottom:12px;"><label>Email</label><input id="loginEmail" type="email" placeholder="you@drivemodetms.com" onkeydown="if(event.key==='Enter')attemptLogin()"></div>
+    <div class="field" style="margin-bottom:6px;"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')attemptLogin()"></div>
+    <div id="loginError" style="color:var(--danger);font-size:12.5px;min-height:16px;margin:2px 0 12px;"></div>
+    <button class="btn" style="width:100%;" onclick="attemptLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <div class="shell">
+    <div class="sidebar">
+      <div class="logo"><div class="mark"></div>Drive Mode</div>
+      <div id="navItems"></div>
+      <div class="sidebar-foot">
+        <div class="who" id="whoName"></div>
+        <div class="who-role" id="whoRole"></div>
+        <button class="logout-btn" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+    <div class="main" id="main"></div>
+  </div>
+</div>
+
+<!-- ================= LOAD MODAL ================= -->
+<div class="overlay" id="loadOverlay">
+  <div class="modal modal-wrap">
+    <button class="close-x" onclick="closeModal()">✕</button>
+    <h2 id="modalTitle">New Load</h2>
+    <div class="modal-sub" id="modalSub">Enter load details, assign resources, and set status.</div>
+    <div class="form-grid" id="formGrid"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="saveLoad()">Save Load</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= GENERIC ENTITY MODAL ================= -->
+<div class="overlay" id="entityOverlay">
+  <div class="modal modal-wrap">
+    <button class="close-x" onclick="closeEntityModal()">✕</button>
+    <h2 id="entityModalTitle">Edit</h2>
+    <div class="modal-sub" id="entityModalSub"></div>
+    <div class="form-grid" id="entityFormGrid"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeEntityModal()">Cancel</button>
+      <button class="btn" onclick="saveEntityModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DRIVE MODE TMS — PROTOTYPE
+   Persistence: localStorage (per-browser demo only)
+   ============================================================ */
+const LS_KEY = 'dmtms_data_v1';
+const STATUSES = ['available','assigned','dispatched','at_pickup','loaded','in_transit','at_delivery','delivered','documents_pending','invoiced','paid'];
+const STATUS_LABEL = {available:'Available',assigned:'Assigned',dispatched:'Dispatched',at_pickup:'At Pickup',loaded:'Loaded',in_transit:'In Transit',at_delivery:'At Delivery',delivered:'Delivered',documents_pending:'Documents Pending',invoiced:'Invoiced',paid:'Paid',cancelled:'Cancelled'};
+const ROLES = [
+  {id:'owner_admin', label:'Owner / Admin', desc:'Full visibility across all modules'},
+  {id:'dispatcher', label:'Dispatcher', desc:'Manage loads & assignments'},
+  {id:'accounting', label:'Accounting', desc:'Revenue, invoices & payments'},
+  {id:'safety', label:'Safety', desc:'Compliance & driver alerts'},
+  {id:'driver', label:'Driver', desc:'Driver portal preview'},
+  {id:'customer', label:'Customer', desc:'Customer portal preview'},
+];
+const DEMO_USERS = [];
+
+function seedData(){
+  const today = new Date('2026-09-27T08:00:00');
+  const d = (offset,h=8) => { const t=new Date(today); t.setDate(t.getDate()+offset); t.setHours(h,0,0,0); return t.toISOString(); };
+  return {
+    drivers:[
+      {id:'drv1', name:'Marcus Reyes', phone:'(614) 555-0142', email:'mreyes@drivemode.com', cdl:'OH-88213410', cdlExp:'2026-11-02', medExp:'2026-10-15', mvr:'Clean — pulled 2026-06-01', status:'active', truckId:'trk1', payType:'per_mile', payRate:0.55, classification:'w2_employee', employeeId:'DML01', hourlyRate:22.50, overtimeRate:33.75, milesRate:0.45, percentageRate:0.08, w4Filing:'single', federalWithholding:2, state:'OH', healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:100, hireDate:'2023-01-15'},
+      {id:'drv2', name:'Angela Cho', phone:'(614) 555-0199', email:'acho@drivemode.com', cdl:'OH-77120044', cdlExp:'2027-04-18', medExp:'2027-01-09', mvr:'Clean — pulled 2026-05-14', status:'active', truckId:'trk2', payType:'percentage', payRate:28, classification:'w2_employee', employeeId:'DML02', hourlyRate:20.00, overtimeRate:30.00, milesRate:0.40, percentageRate:0.08, w4Filing:'married', federalWithholding:3, state:'OH', healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:150, hireDate:'2023-06-01'},
+      {id:'drv3', name:'Derrick Owens', phone:'(614) 555-0177', email:'downens@drivemode.com', cdl:'IN-55009812', cdlExp:'2026-10-05', medExp:'2026-09-30', mvr:'1 violation — review', status:'active', truckId:'trk3', payType:'per_mile', payRate:0.58, classification:'owner_operator_1099', ownerOperatorId:'oo_001'},
+    ],
+    trucks:[
+      {id:'trk1', unit:'T-104', vin:'1FUJA6CV05LM12345', plate:'OH-TR4021', mileage:312840, insExp:'2027-02-01', regExp:'2027-01-15', nextInspection:'2026-11-20'},
+      {id:'trk2', unit:'T-108', vin:'1XKAD49X8ND512233', plate:'OH-TR4055', mileage:198220, insExp:'2027-05-01', regExp:'2026-10-10', nextInspection:'2026-10-02'},
+      {id:'trk3', unit:'T-112', vin:'3AKJHHDR9GSGV0091', plate:'IN-TR7712', mileage:401110, insExp:'2026-10-08', regExp:'2027-03-01', nextInspection:'2026-12-01'},
+    ],
+    trailers:[
+      {id:'tr1', unit:'DV-51', type:'Dry Van', plate:'OH-TL9012', insExp:'2027-02-01', regExp:'2027-01-15'},
+      {id:'tr2', unit:'RF-22', type:'Reefer', plate:'OH-TL9033', insExp:'2026-10-20', regExp:'2027-04-01'},
+      {id:'tr3', unit:'FB-09', type:'Flatbed', plate:'IN-TL2210', insExp:'2027-06-01', regExp:'2027-02-01'},
+    ],
+    customers:[
+      {id:'cus1', name:'Coastal Foods Inc.', type:'shipper', contact:'Lena Park', email:'lena@coastalfoods.com', phone:'(704) 555-0110', terms:'Net 30'},
+      {id:'cus2', name:'Heartland Produce', type:'shipper', contact:'Tom Rizzo', email:'tom@heartlandproduce.com', phone:'(317) 555-0166', terms:'Net 15'},
+      {id:'cus3', name:'Apex Brokerage LLC', type:'broker', contact:'Nadia Fisher', email:'nadia@apexbrokerage.com', phone:'(888) 555-0199', terms:'Quick Pay 2%'},
+    ],
+    loads:[
+      {id:'L-1001', shipperId:'cus1', brokerId:'cus3', pickupLoc:'Charlotte, NC', deliveryLoc:'Columbus, OH', pickupAt:d(0,7), deliveryAt:d(1,14), rate:2150, miles:415, equipment:'reefer', truckId:'trk1', trailerId:'tr2', driverId:'drv1', status:'in_transit', detention:0, layover:0, tonu:0, notes:'Temp -10F, driver has PIN for gate.', docs:{ratecon:'ratecon_1001.pdf', bol:'bol_1001.pdf'}},
+      {id:'L-1002', shipperId:'cus2', brokerId:'cus3', pickupLoc:'Indianapolis, IN', deliveryLoc:'Pittsburgh, PA', pickupAt:d(1,9), deliveryAt:d(2,12), rate:1875, miles:355, equipment:'dry_van', truckId:'trk2', trailerId:'tr1', driverId:'drv2', status:'dispatched', detention:0, layover:0, tonu:0, notes:'', docs:{ratecon:'ratecon_1002.pdf'}},
+      {id:'L-1003', shipperId:'cus1', brokerId:null, pickupLoc:'Columbus, OH', deliveryLoc:'Louisville, KY', pickupAt:d(-2,8), deliveryAt:d(-1,16), rate:1420, miles:200, equipment:'dry_van', truckId:'trk3', trailerId:'tr3', driverId:'drv3', status:'delivered', detention:150, layover:0, tonu:0, notes:'Receiver held truck 1.5 hrs — detention billed.', docs:{ratecon:'ratecon_1003.pdf', bol:'bol_1003.pdf', pod:'pod_1003.pdf'}},
+      {id:'L-1004', shipperId:'cus2', brokerId:'cus3', pickupLoc:'Chicago, IL', deliveryLoc:'Columbus, OH', pickupAt:d(-5,8), deliveryAt:d(-4,15), rate:1980, miles:355, equipment:'dry_van', truckId:null, trailerId:null, driverId:null, status:'invoiced', detention:0, layover:0, tonu:0, notes:'', docs:{ratecon:'ratecon_1004.pdf', bol:'bol_1004.pdf', pod:'pod_1004.pdf'}},
+      {id:'L-1005', shipperId:'cus1', brokerId:'cus3', pickupLoc:'Memphis, TN', deliveryLoc:'Charlotte, NC', pickupAt:d(-10,8), deliveryAt:d(-9,17), rate:2400, miles:490, equipment:'reefer', truckId:null, trailerId:null, driverId:null, status:'paid', detention:0, layover:0, tonu:0, notes:'', docs:{ratecon:'ratecon_1005.pdf', bol:'bol_1005.pdf', pod:'pod_1005.pdf'}},
+      {id:'L-1006', shipperId:'cus2', brokerId:null, pickupLoc:'Columbus, OH', deliveryLoc:'Detroit, MI', pickupAt:d(2,8), deliveryAt:d(2,15), rate:1150, miles:205, equipment:'dry_van', truckId:null, trailerId:null, driverId:null, status:'available', detention:0, layover:0, tonu:0, notes:'Needs driver assignment.', docs:{}},
+      {id:'L-1007', shipperId:'cus1', brokerId:'cus3', pickupLoc:'Columbus, OH', deliveryLoc:'Nashville, TN', pickupAt:d(3,9), deliveryAt:d(3,18), rate:1690, miles:400, equipment:'dry_van', truckId:'trk2', trailerId:'tr1', driverId:'drv2', status:'assigned', detention:0, layover:0, tonu:0, notes:'', docs:{ratecon:'ratecon_1007.pdf'}},
+    ],
+    loadBoardPostings:[
+      {id:'lbp1', loadId:'L-1006', board:'DAT', externalRef:'DAT-88213-OH', postedRate:1150, status:'posted', postedAt:d(-1,10)},
+    ],
+    loadBoardListings:[
+      {id:'ext1', board:'DAT', externalRef:'DAT-90142-IL', broker:'Redwood Logistics', origin:'Columbus, OH', destination:'St. Louis, MO', pickupDate:d(2,8), equipment:'dry_van', rate:1540, miles:365},
+      {id:'ext2', board:'Truckstop.com', externalRef:'TS-55621-KY', broker:'Total Quality Logistics', origin:'Louisville, KY', destination:'Columbus, OH', pickupDate:d(1,7), equipment:'dry_van', rate:980, miles:200},
+      {id:'ext3', board:'DAT', externalRef:'DAT-90188-MI', broker:'Echo Global Logistics', origin:'Detroit, MI', destination:'Columbus, OH', pickupDate:d(3,9), equipment:'reefer', rate:1275, miles:205},
+      {id:'ext4', board:'Truckstop.com', externalRef:'TS-33410-NC', broker:'Coyote Logistics', origin:'Charlotte, NC', destination:'Columbus, OH', pickupDate:d(4,8), equipment:'dry_van', rate:1850, miles:415},
+      {id:'ext5', board:'Brokerages', externalRef:'BR-44521-PA', broker:'Saia LTL Brokerage', origin:'Pittsburgh, PA', destination:'Columbus, OH', pickupDate:d(2,10), equipment:'dry_van', rate:1320, miles:280},
+    ],
+    loadBoardConfig:[
+      {board:'DAT', name:'DAT One', apiKey:'', connected:false, apiUrl:'https://api.dat.com'},
+      {board:'Truckstop.com', name:'Truckstop.com', apiKey:'', connected:false, apiUrl:'https://api.truckstop.com'},
+      {board:'Brokerages', name:'Carrier Exchange / Echo', apiKey:'', connected:false, apiUrl:'https://api.echo.com'},
+    ],
+    factoringCompanies:[
+      {id:'fc1', name:'RTS Financial', advanceRate:97, feePct:3, reserveDays:0, active:true},
+      {id:'fc2', name:'Triumph Business Capital', advanceRate:95, feePct:2.5, reserveDays:2, active:true},
+    ],
+    factoringSubmissions:[
+      {id:'fs1', loadId:'L-1005', factoringId:'fc1', amount:2400, status:'reserve_released', submittedAt:d(-9,17), fundedAt:d(-9,18)},
+    ],
+    expenses:[
+      {id:'ex1', category:'fuel', amount:410, loadId:'L-1001', date:'2026-09-25', notes:'Fuel — I-40 corridor'},
+      {id:'ex2', category:'tolls', amount:65, loadId:'L-1002', date:'2026-09-26', notes:'PA Turnpike'},
+      {id:'ex3', category:'maintenance', amount:820, loadId:null, date:'2026-09-20', notes:'T-112 brake service'},
+      {id:'ex4', category:'driver_pay', amount:3200, loadId:null, date:'2026-09-22', notes:'Weekly driver settlements'},
+      {id:'ex5', category:'other', amount:140, loadId:null, date:'2026-09-24', notes:'ELD subscription'},
+    ],
+    w2Employees:[],
+    w2Payrolls:[
+      {id:'pay_001', driverId:'drv1', payPeriod:{startDate:'2026-09-01', endDate:'2026-09-15', payDate:'2026-09-20'}, regularHours:80, overtimeHours:8, milesPay:2250, percentagePay:1500, bonuses:0, reimbursements:0, grossWages:5520, federalIncome:580.50, socialSecurity:342.24, medicare:80.04, stateIncome:200, localTaxes:0, healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:100, otherDeductions:0, totalDeductions:1602.78, netPay:3917.22, employerSSA:342.24, employerMedicare:80.04, status:'paid', approvedBy:'admin', approvedAt:'2026-09-19', paidAt:'2026-09-20'},
+    ],
+    ownerOperators:[
+      {id:'oo_001', name:'John Smith', driverId:'drv3', companyName:'Smith Trucking LLC', truckNumber:'T-156', status:'active', agreementType:'percentage_split', ownerShare:88, insuranceDeduction:350, dispatchPercentage:5, eldMonthlyFee:50, trailerRentalMonthly:200, maintenancePool:100, taxId:'XX-1234567', w9OnFile:true},
+      {id:'oo_002', name:'Maria Garcia', driverId:'drv4', companyName:'Garcia Logistics', truckNumber:'T-201', status:'active', agreementType:'percentage_split', ownerShare:90, insuranceDeduction:300, dispatchPercentage:4, eldMonthlyFee:50, trailerRentalMonthly:200, maintenancePool:100, taxId:'YY-9876543', w9OnFile:true},
+    ],
+    ownerOperatorSettlements:[
+      {id:'settlement_001', ownerOperatorId:'oo_001', settlementPeriod:{startDate:'2026-09-01', endDate:'2026-09-30'}, loadIds:['L-1001','L-1002','L-1003'], grossRevenue:5550, creditsBreakdown:{loadRevenue:5000, accessorials:350, bonuses:0, reimbursements:200}, deductions:{insurance:350, dispatchFee:277.50, eldFee:50, trailerRental:200, maintenance:100, fuelAdvance:0, otherDeductions:0, totalDeductions:977.50}, ownershipSplit:{percentage:88, ownerShare:4023.80, companyShare:548.70}, netSettlement:4023.80, status:'paid', approvedBy:'admin', approvedAt:'2026-09-30', paidAt:'2026-10-01'},
+    ],
+    users:[
+      {id:'u1', email:'admin@drivemodetms.com', name:'Admin', password:'Admin123!', role:'owner_admin', active:true},
+      {id:'u2', email:'dispatcher@drivemodetms.com', name:'John Dispatcher', password:'Dispatcher123!', role:'dispatcher', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+      {id:'u3', email:'accounting@drivemodetms.com', name:'Sarah Accounting', password:'Accounting123!', role:'accounting', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+      {id:'u4', email:'safety@drivemodetms.com', name:'Mike Safety', password:'Safety123!', role:'safety', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+      {id:'u5', email:'driver@drivemodetms.com', name:'Marcus Reyes', password:'Driver123!', role:'driver', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+      {id:'u6', email:'customer@drivemodetms.com', name:'Lisa Customer', password:'Customer123!', role:'customer', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+    ],
+    documents:[],
+  };
+}
+
+function loadDB(){
+  const seed = seedData();
+  let raw = localStorage.getItem(LS_KEY);
+  if(!raw){ localStorage.setItem(LS_KEY, JSON.stringify(seed)); return seed; }
+  let data;
+  try{ data = JSON.parse(raw); }catch(e){ data = null; }
+  if(!data){ localStorage.setItem(LS_KEY, JSON.stringify(seed)); return seed; }
+  // migrate: backfill any top-level sections added by later app versions
+  Object.keys(seed).forEach(k=>{ if(!(k in data)) data[k] = seed[k]; });
+  // migrate: backfill new per-driver fields (classification, payType, payRate) for saves from older versions
+  if(Array.isArray(data.drivers)){
+    data.drivers.forEach(d=>{
+      const seedMatch = seed.drivers.find(sd=>sd.id===d.id) || seed.drivers[0];
+      if(d.classification===undefined) d.classification = seedMatch.classification;
+      if(d.payType===undefined) d.payType = seedMatch.payType;
+      if(d.payRate===undefined) d.payRate = seedMatch.payRate;
+    });
+  }
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+  return data;
+}
+function saveDB(){ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+let DB = loadDB();
+let currentRole = null;
+let currentUser = null;
+let editingLoadId = null;
+
+/* ---------- LOGIN ---------- */
+function renderLogin(){
+  document.getElementById('login').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+function fillLogin(email, password){
+  document.getElementById('loginEmail').value = email;
+  document.getElementById('loginPassword').value = password;
+  document.getElementById('loginError').textContent = '';
+}
+function clearAllData(){
+  if(confirm('This will delete all data and reset to fresh demo data. Continue?')){
+    localStorage.removeItem('dmtms_data_v1');
+    location.reload();
+  }
+}
+function attemptLogin(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  if(!email || !password){ errEl.textContent = 'Enter your email and password.'; return; }
+
+  // Check against DB users only
+  const user = DB.users.find(u=>u.email.toLowerCase()===email && u.password===password && u.active);
+
+  if(!user){ errEl.textContent = 'Incorrect email or password.'; return; }
+  errEl.textContent = '';
+  login(user);
+}
+function login(user){
+  currentRole = user.role;
+  currentUser = user;
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('whoName').textContent = user.name;
+  document.getElementById('whoRole').textContent = user.role.replace('_',' / ');
+  buildNav();
+  const landing = user.role==='driver' ? 'myloads' : user.role==='customer' ? 'customerloads' : user.role==='safety' ? 'drivers' : 'dashboard';
+  navigate(landing);
+}
+function logout(){
+  currentRole=null; currentUser=null;
+  document.getElementById('loginEmail').value=''; document.getElementById('loginPassword').value=''; document.getElementById('loginError').textContent='';
+  document.getElementById('login').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+/* ---------- NAV ---------- */
+const NAV_BY_ROLE = {
+  owner_admin:[['dashboard','Dashboard'],['loads','Load Numbers'],['dispatch','Dispatch'],['loadboard','Load Board'],['users','Users'],['fleet','Fleet'], ['drivers','Drivers'],['customers','Customers'],['accounting','Accounting'],['factoring','Factoring'],['documents','Documents']],
+  dispatcher:[['dashboard','Dashboard'],['loads','Load Numbers'],['dispatch','Dispatch'],['loadboard','Load Board'],['fleet','Fleet'],['drivers','Drivers'],['documents','Documents']],
+  accounting:[['dashboard','Dashboard'],['accounting','Accounting'],['factoring','Factoring'],['drivers','Drivers'],['customers','Customers'],['documents','Documents']],
+  safety:[['dashboard','Dashboard'],['drivers','Drivers'],['fleet','Fleet']],
+  driver:[['myloads','My Loads'],['history','Completed Loads'],['mypaystubs','My Paystubs']],
+  customer:[['customerloads','My Shipments'],['invoices','Invoices']],
+};
+
+// Driver portal landing - skip dashboard
+function getDriverLanding(){
+  return 'myloads';
+}
+const LOCKED_LABEL = {fleet:'Fleet Management', drivers:'Driver Management', customers:'Customer Management', accounting:'Accounting', documents:'Document Center'};
+function buildNav(){
+  const items = NAV_BY_ROLE[currentRole];
+  document.getElementById('navItems').innerHTML = items.map(([key,label])=>
+    `<div class="nav-item" data-key="${key}" onclick="navigate('${key}')">${label}</div>`
+  ).join('');
+}
+function setActiveNav(key){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.key===key));
+}
+
+function navigate(key){
+  setActiveNav(key);
+  const main = document.getElementById('main');
+  if(key==='dashboard') return renderDashboard(main);
+  if(key==='loads') return renderLoadNumbers(main);
+  if(key==='dispatch') return renderDispatch(main);
+  if(key==='myloads') return renderDriverLoads(main,false);
+  if(key==='history') return renderDriverLoads(main,true);
+  if(key==='mypaystubs') return renderDriverPaystubs(main);
+  if(key==='customerloads') return renderCustomerLoads(main);
+  if(key==='invoices') return renderCustomerInvoices(main);
+  if(key==='loadboard') return renderLoadBoard(main);
+  if(key==='users') return renderUsers(main);
+  if(key==='factoring') return renderFactoring(main);
+  if(key==='fleet') return renderFleet(main);
+  if(key==='drivers') return renderDrivers(main);
+  if(key==='customers') return renderCustomersPage(main);
+  if(key==='accounting') return renderAccounting(main);
+  if(key==='documents') return renderDocuments(main);
+  // stubbed modules for phase 2
+  main.innerHTML = `<div class="topbar"><div><h1>${LOCKED_LABEL[key]||key}</h1><div class="desc">Module planned for the next build phase</div></div></div>
+    <div class="locked-msg">${LOCKED_LABEL[key]||'This module'} isn't wired up yet in this prototype.<br>It follows the same schema and role rules already used by Dashboard and Dispatch.</div>`;
+}
+
+/* ---------- HELPERS ---------- */
+function fmtMoney(n){ return '$' + Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0}); }
+function fmtDate(iso){ if(!iso) return '—'; const dt=new Date(iso); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+function fmtDateOnly(iso){ if(!iso) return '—'; return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function daysUntil(dateStr){ return Math.ceil((new Date(dateStr) - new Date('2026-09-27')) / 86400000); }
+function driverName(id){ const d = DB.drivers.find(x=>x.id===id); return d? d.name : '— Unassigned'; }
+function truckUnit(id){ const t = DB.trucks.find(x=>x.id===id); return t? t.unit : '—'; }
+function trailerUnit(id){ const t = DB.trailers.find(x=>x.id===id); return t? t.unit : '—'; }
+function custName(id){ const c = DB.customers.find(x=>x.id===id); return c? c.name : '—'; }
+
+/* ---------- DASHBOARD ---------- */
+function renderDashboard(main){
+  const loads = DB.loads;
+  const total = loads.length;
+  const delivered = loads.filter(l=>['delivered','documents_pending','invoiced','paid'].includes(l.status)).length;
+  const active = loads.filter(l=>!['delivered','documents_pending','invoiced','paid','cancelled'].includes(l.status)).length;
+  const revenue = loads.filter(l=>l.status!=='cancelled').reduce((s,l)=>s+l.rate+l.detention+l.layover+l.tonu,0);
+  const expenses = Math.round(revenue*0.62); // modeled: fuel, driver pay, maintenance, tolls
+  const outstanding = loads.filter(l=>l.status==='invoiced').reduce((s,l)=>s+l.rate,0);
+
+  const driverAlerts = [];
+  DB.drivers.forEach(d=>{
+    const cdlD = daysUntil(d.cdlExp), medD = daysUntil(d.medExp);
+    if(cdlD<=30) driverAlerts.push({sev:cdlD<=7?'bad':'warn', text:`${d.name} — CDL expires in ${cdlD} days`});
+    if(medD<=30) driverAlerts.push({sev:medD<=7?'bad':'warn', text:`${d.name} — Medical card expires in ${medD} days`});
+    if(d.mvr.startsWith('1')) driverAlerts.push({sev:'warn', text:`${d.name} — MVR flagged for review`});
+  });
+  const truckAlerts = [];
+  DB.trucks.forEach(t=>{
+    const insD = daysUntil(t.insExp), regD = daysUntil(t.regExp), inspD = daysUntil(t.nextInspection);
+    if(insD<=30) truckAlerts.push({sev:insD<=7?'bad':'warn', text:`${t.unit} — Insurance expires in ${insD} days`});
+    if(regD<=30) truckAlerts.push({sev:regD<=7?'bad':'warn', text:`${t.unit} — Registration expires in ${regD} days`});
+    if(inspD<=14) truckAlerts.push({sev:inspD<=3?'bad':'warn', text:`${t.unit} — Inspection due in ${inspD} days`});
+  });
+
+  const upcoming = [];
+  loads.forEach(l=>{
+    [['Pickup',l.pickupAt,l.pickupLoc],['Delivery',l.deliveryAt,l.deliveryLoc]].forEach(([kind,at,loc])=>{
+      const dd = daysUntil(at);
+      if(dd>=-1 && dd<=5) upcoming.push({load:l.id, kind, at, loc, dd});
+    });
+  });
+  upcoming.sort((a,b)=> new Date(a.at)-new Date(b.at));
+
+  main.innerHTML = `
+  <div class="topbar"><div><h1>Dashboard</h1><div class="desc">Drive Mode Logistics — company-wide overview</div></div>
+    <button class="btn" onclick="navigate('dispatch')">+ New Load</button></div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="lbl">Total Loads</div><div class="stat-num">${total}</div><div class="sub">All statuses</div></div>
+    <div class="kpi accent"><div class="lbl">Active Loads</div><div class="stat-num">${active}</div><div class="sub">In progress right now</div></div>
+    <div class="kpi good"><div class="lbl">Delivered</div><div class="stat-num">${delivered}</div><div class="sub">Completed runs</div></div>
+    <div class="kpi good"><div class="lbl">Revenue</div><div class="stat-num">${fmtMoney(revenue)}</div><div class="sub">Booked, all loads</div></div>
+    <div class="kpi bad"><div class="lbl">Expenses</div><div class="stat-num">${fmtMoney(expenses)}</div><div class="sub">Fuel, pay, maintenance</div></div>
+    <div class="kpi warn"><div class="lbl">Outstanding Invoices</div><div class="stat-num">${fmtMoney(outstanding)}</div><div class="sub">${loads.filter(l=>l.status==='invoiced').length} invoice(s) open</div></div>
+    <div class="kpi ${driverAlerts.length?'bad':''}"><div class="lbl">Driver Alerts</div><div class="stat-num">${driverAlerts.length}</div><div class="sub">CDL, medical, MVR</div></div>
+    <div class="kpi ${truckAlerts.length?'bad':''}"><div class="lbl">Truck Alerts</div><div class="stat-num">${truckAlerts.length}</div><div class="sub">Insurance, registration, inspection</div></div>
+  </div>
+  <div class="dash-cols">
+    <div class="panel">
+      <h3>Upcoming Pickups &amp; Deliveries</h3>
+      ${upcoming.length? upcoming.map(u=>`<div class="row-item"><div><div class="t1">${u.load} — ${u.kind}</div><div class="t2">${u.loc}</div></div><div style="text-align:right"><div class="t1">${fmtDate(u.at)}</div><div class="t2">${u.dd<0?'overdue':u.dd===0?'today':'in '+u.dd+' days'}</div></div></div>`).join('') : '<div class="empty">Nothing scheduled in the next 5 days.</div>'}
+    </div>
+    <div class="panel">
+      <h3>Alerts</h3>
+      ${[...driverAlerts,...truckAlerts].length ? [...driverAlerts,...truckAlerts].map(a=>`<div class="alert-item"><div class="alert-dot ${a.sev}"></div><div>${a.text}</div></div>`).join('') : '<div class="empty">No open alerts.</div>'}
+    </div>
+  </div>`;
+}
+
+/* ---------- DISPATCH ---------- */
+let dispatchFilter = 'all';
+function renderDispatch(main){
+  main.innerHTML = `
+  <div class="topbar"><div><h1>Dispatch</h1><div class="desc">Create, assign and track every load</div></div>
+    <button class="btn" onclick="openModal()">+ New Load</button></div>
+  <div class="filters">
+    <select id="statusFilter" onchange="dispatchFilter=this.value; renderDispatchTable()">
+      <option value="all">All statuses</option>
+      ${STATUSES.map(s=>`<option value="${s}">${STATUS_LABEL[s]}</option>`).join('')}
+    </select>
+    <input id="searchBox" placeholder="Search load #, city, shipper..." oninput="renderDispatchTable()">
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Load #</th><th>Route</th><th>Pickup</th><th>Delivery</th><th>Shipper / Broker</th><th>Equip.</th><th>Driver</th><th>Rate</th><th>Status</th></tr></thead>
+    <tbody id="loadsBody"></tbody>
+  </table></div>`;
+  renderDispatchTable();
+}
+
+/* ---------- LOAD NUMBERS ---------- */
+function renderLoadNumbers(main){
+  const totalLoads = DB.loads.length;
+  const statuses = {};
+  STATUSES.forEach(s=>{ statuses[s] = DB.loads.filter(l=>l.status===s).length; });
+
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Load Numbers</h1><div class="desc">Complete load management and tracking</div></div>
+  <button class="btn" onclick="navigate('dispatch')">+ New Load</button></div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));">
+    <div class="kpi"><div class="lbl">Total Loads</div><div class="stat-num">${totalLoads}</div></div>
+    <div class="kpi accent"><div class="lbl">Available</div><div class="stat-num">${statuses.available||0}</div></div>
+    <div class="kpi warn"><div class="lbl">In Transit</div><div class="stat-num">${statuses.in_transit||0}</div></div>
+    <div class="kpi good"><div class="lbl">Delivered</div><div class="stat-num">${statuses.delivered||0}</div></div>
+  </div>
+
+  <div class="panel">
+    <h3>All Loads</h3>
+    <div style="margin-bottom:16px;">
+      <input type="text" id="loadSearchBox" placeholder="Search by load #, route, shipper..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--text);" oninput="renderLoadNumbersTable()">
+    </div>
+    <div class="table-wrap" style="border:none;"><table>
+      <thead>
+        <tr>
+          <th>Load #</th>
+          <th>Route</th>
+          <th>Shipper</th>
+          <th>Driver</th>
+          <th>Status</th>
+          <th>Rate</th>
+          <th>Pickup</th>
+          <th>Delivery</th>
+          <th>Miles</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="loadNumbersBody"></tbody>
+    </table></div>
+  </div>`;
+
+  renderLoadNumbersTable();
+}
+
+function renderLoadNumbersTable(){
+  const searchVal = (document.getElementById('loadSearchBox')?.value || '').toLowerCase();
+  const filtered = DB.loads.filter(l=>
+    l.id.toLowerCase().includes(searchVal) ||
+    (l.pickupLoc+' '+l.deliveryLoc).toLowerCase().includes(searchVal) ||
+    (DB.customers.find(c=>c.id===l.customerId)?.name || '').toLowerCase().includes(searchVal)
+  );
+
+  document.getElementById('loadNumbersBody').innerHTML = filtered.map(l=>`
+    <tr style="cursor:pointer;" onclick="navigate('dispatch')">
+      <td><strong>${l.id}</strong></td>
+      <td>${l.pickupLoc} → ${l.deliveryLoc}</td>
+      <td>${custName(l.customerId)}</td>
+      <td>${driverName(l.driverId)}</td>
+      <td><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></td>
+      <td>${fmtMoney(l.rate)}</td>
+      <td>${fmtDateOnly(l.pickupAt)}</td>
+      <td>${fmtDateOnly(l.deliveryAt)}</td>
+      <td>${l.miles} mi</td>
+      <td style="text-align:center;"><button class="btn small secondary" onclick="event.stopPropagation(); deleteLoad('${l.id}')" style="color:var(--danger);padding:4px 8px;font-size:11px;">Delete</button></td>
+    </tr>
+  `).join('');
+}
+
+function renderDispatchTable(){
+  const filter = dispatchFilter;
+  const q = (document.getElementById('searchBox')?.value||'').toLowerCase();
+  const rows = DB.loads.filter(l=>{
+    if(filter!=='all' && l.status!==filter) return false;
+    if(!q) return true;
+    const hay = [l.id,l.pickupLoc,l.deliveryLoc,custName(l.shipperId),custName(l.brokerId)].join(' ').toLowerCase();
+    return hay.includes(q);
+  }).sort((a,b)=> new Date(a.pickupAt)-new Date(b.pickupAt));
+  document.getElementById('loadsBody').innerHTML = rows.map(l=>`
+    <tr onclick="openModal('${l.id}')" style="cursor:pointer;">
+      <td class="mono">${l.id}</td>
+      <td>${l.pickupLoc} → ${l.deliveryLoc}<div class="mono">${l.miles} mi</div></td>
+      <td>${fmtDate(l.pickupAt)}</td>
+      <td>${fmtDate(l.deliveryAt)}</td>
+      <td>${custName(l.shipperId)}${l.brokerId?'<div class="mono">via '+custName(l.brokerId)+'</div>':''}</td>
+      <td>${l.equipment.replace('_',' ')}</td>
+      <td>${driverName(l.driverId)}</td>
+      <td>${fmtMoney(l.rate)}</td>
+      <td style="display:flex;gap:6px;align-items:center;"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span>${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher') ? '<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="event.stopPropagation(); deleteLoad(\''+l.id+'\')">Delete</button>' : ''}</td>
+    </tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--dim);padding:26px;">No loads match this filter.</td></tr>`;
+}
+
+/* ---------- LOAD MODAL (create/edit) ---------- */
+function openModal(loadId){
+  editingLoadId = loadId || null;
+  const l = loadId ? DB.loads.find(x=>x.id===loadId) : null;
+  document.getElementById('modalTitle').textContent = l ? `Edit Load ${l.id}` : 'New Load';
+  document.getElementById('modalSub').textContent = l ? 'Update details, assignment or status.' : 'Fill in shipment details and assign resources.';
+
+  const shipperOpts = DB.customers.filter(c=>c.type!=='broker').map(c=>`<option value="${c.id}" ${l&&l.shipperId===c.id?'selected':''}>${c.name}</option>`).join('');
+  const brokerOpts = '<option value="">— None (direct) —</option>' + DB.customers.filter(c=>c.type!=='shipper').map(c=>`<option value="${c.id}" ${l&&l.brokerId===c.id?'selected':''}>${c.name}</option>`).join('');
+  const truckOpts = '<option value="">Unassigned</option>' + DB.trucks.map(t=>`<option value="${t.id}" ${l&&l.truckId===t.id?'selected':''}>${t.unit}</option>`).join('');
+  const trailerOpts = '<option value="">Unassigned</option>' + DB.trailers.map(t=>`<option value="${t.id}" ${l&&l.trailerId===t.id?'selected':''}>${t.unit} (${t.type})</option>`).join('');
+  const driverOpts = '<option value="">Unassigned</option>' + DB.drivers.map(d=>{
+    let rateInfo = '';
+    if(d.classification==='w2_employee'){
+      if(d.payType==='per_mile') rateInfo = ` ($${d.payRate}/mi)`;
+      else if(d.payType==='per_hour') rateInfo = ` ($${d.payRate}/hr)`;
+      else if(d.payType==='percentage') rateInfo = ` (${d.payRate}%)`;
+    }
+    return `<option value="${d.id}" ${l&&l.driverId===d.id?'selected':''}>${d.name}${d.employeeId ? ' ('+d.employeeId+')' : ''}${rateInfo}</option>`;
+  }).join('');
+  const equipOpts = ['dry_van','reefer','flatbed','step_deck','power_only','box_truck','other'].map(e=>`<option value="${e}" ${l&&l.equipment===e?'selected':''}>${e.replace('_',' ')}</option>`).join('');
+  const statusOpts = STATUSES.map(s=>`<option value="${s}" ${l&&l.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('');
+
+  const commonCities = [
+    'Columbus, OH','Cincinnati, OH','Cleveland, OH','Indianapolis, IN','Detroit, MI',
+    'Louisville, KY','Chicago, IL','Memphis, TN','Nashville, TN','Atlanta, GA',
+    'Charlotte, NC','Pittsburgh, PA','Miami, FL','Dallas, TX','Houston, TX'
+  ];
+
+  document.getElementById('formGrid').innerHTML = `
+    <div class="field"><label>Pickup Location</label><input id="f_pickupLoc" value="${l?l.pickupLoc:''}" placeholder="City, ST" list="cities" autocomplete="off" onchange="calcMiles()"></div>
+    <div class="field"><label>Delivery Location</label><input id="f_deliveryLoc" value="${l?l.deliveryLoc:''}" placeholder="City, ST" list="cities" autocomplete="off" onchange="calcMiles()"></div>
+    <datalist id="cities">${commonCities.map(c=>`<option value="${c}">`).join('')}</datalist>
+    <div class="field"><label>Pickup Date/Time</label><input type="datetime-local" id="f_pickupAt" value="${l?toLocalInput(l.pickupAt):''}"></div>
+    <div class="field"><label>Delivery Date/Time</label><input type="datetime-local" id="f_deliveryAt" value="${l?toLocalInput(l.deliveryAt):''}"></div>
+
+    <div class="section-divider">Customer</div>
+    <div class="field"><label>Shipper</label><select id="f_shipperId">${shipperOpts}</select></div>
+    <div class="field"><label>Broker</label><select id="f_brokerId">${brokerOpts}</select></div>
+
+    <div class="section-divider">Rate &amp; Equipment</div>
+    <div class="field"><label>Rate ($)</label><input type="number" id="f_rate" value="${l?l.rate:''}" placeholder="0.00"></div>
+    <div class="field"><label>Miles</label><input type="number" id="f_miles" value="${l?l.miles:''}" placeholder="0" onchange="calcMiles()"></div>
+    <div class="field"><label>Hours Worked</label><input type="number" id="f_hours" value="${l?l.hours:''}" placeholder="0" step="0.5" min="0"></div>
+    <div class="field"><label>Equipment Type</label><select id="f_equipment">${equipOpts}</select></div>
+    <div class="field"><label>Load Status</label><select id="f_status">${statusOpts}</select></div>
+
+    <div class="section-divider">Assignment</div>
+    <div class="field"><label>Assigned Truck</label><select id="f_truckId">${truckOpts}</select></div>
+    <div class="field"><label>Assigned Trailer</label><select id="f_trailerId">${trailerOpts}</select></div>
+    <div class="field span2"><label>Assigned Driver</label><select id="f_driverId" onchange="updateDriverPaymentInfo()">${driverOpts}</select></div>
+    <div id="driverPaymentInfo" style="padding:12px;background:var(--panel2);border-radius:8px;margin-top:8px;font-size:13px;display:none;"></div>
+
+    <div class="section-divider">Accessorials</div>
+    <div class="field"><label>Detention ($)</label><input type="number" id="f_detention" value="${l?l.detention:0}"></div>
+    <div class="field"><label>Layover ($)</label><input type="number" id="f_layover" value="${l?l.layover:0}"></div>
+    <div class="field"><label>TONU ($)</label><input type="number" id="f_tonu" value="${l?l.tonu:0}"></div>
+
+    ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher' || currentUser.role === 'accounting') ? `
+    <div class="section-divider">Documents</div>
+    <div class="field"><label>Rate Confirmation</label><div class="file-row"><input type="file" id="f_doc_ratecon" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.ratecon?'<span class="file-chip">'+l.docs.ratecon+'</span>':''}</div></div>
+    <div class="field"><label>BOL</label><div class="file-row"><input type="file" id="f_doc_bol" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.bol?'<span class="file-chip">'+l.docs.bol+'</span>':''}</div></div>
+    <div class="field"><label>POD</label><div class="file-row"><input type="file" id="f_doc_pod" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.pod?'<span class="file-chip">'+l.docs.pod+'</span>':''}</div></div>
+    ` : ''}
+
+    <div class="section-divider">Notes</div>
+    <div class="field span2"><textarea id="f_notes" placeholder="Dispatch notes...">${l?l.notes:''}</textarea></div>
+  `;
+  document.getElementById('loadOverlay').classList.add('open');
+}
+function toLocalInput(iso){ const d=new Date(iso); const pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+
+// Distance lookup table between common cities (miles)
+const distanceMatrix = {
+  'Columbus, OH|Cincinnati, OH':108, 'Columbus, OH|Cleveland, OH':143, 'Columbus, OH|Indianapolis, IN':176, 'Columbus, OH|Detroit, MI':350,
+  'Columbus, OH|Louisville, KY':315, 'Columbus, OH|Chicago, IL':355, 'Columbus, OH|Memphis, TN':445, 'Columbus, OH|Nashville, TN':430,
+  'Columbus, OH|Atlanta, GA':580, 'Columbus, OH|Charlotte, NC':450, 'Columbus, OH|Pittsburgh, PA':185, 'Columbus, OH|Miami, FL':930,
+  'Columbus, OH|Dallas, TX':1110, 'Columbus, OH|Houston, TX':1260, 'Columbus, OH|St. Louis, MO':380,
+  'Cincinnati, OH|Cleveland, OH':245, 'Cincinnati, OH|Indianapolis, IN':110, 'Cincinnati, OH|Louisville, KY':100,
+  'Indianapolis, IN|Detroit, MI':290, 'Indianapolis, IN|Chicago, IL':185, 'Indianapolis, IN|Louisville, KY':110,
+  'Detroit, MI|Chicago, IL':280, 'Louisville, KY|Nashville, TN':240, 'Chicago, IL|Memphis, TN':440,
+  'Memphis, TN|Atlanta, GA':390, 'Memphis, TN|Nashville, TN':210, 'Nashville, TN|Atlanta, GA':250,
+  'Atlanta, GA|Charlotte, NC':245, 'Charlotte, NC|Miami, FL':650, 'Pittsburgh, PA|Philadelphia, PA':305,
+  'Dallas, TX|Houston, TX':240, 'Dallas, TX|Austin, TX':195, 'Houston, TX|San Antonio, TX':197,
+};
+
+function calcMiles(){
+  const pickup = document.getElementById('f_pickupLoc').value.trim();
+  const delivery = document.getElementById('f_deliveryLoc').value.trim();
+  const milesEl = document.getElementById('f_miles');
+
+  if(!pickup || !delivery || pickup===delivery) { milesEl.value=''; return; }
+
+  // Look up distance (try both directions)
+  const key1 = pickup + '|' + delivery;
+  const key2 = delivery + '|' + pickup;
+  const miles = distanceMatrix[key1] || distanceMatrix[key2];
+
+  if(miles) { milesEl.value = miles; }
+}
+function closeModal(){ document.getElementById('loadOverlay').classList.remove('open'); editingLoadId=null; }
+
+function saveLoad(){
+  const g = id => document.getElementById(id);
+  const docFile = id => g(id).files[0] ? g(id).files[0].name : null;
+  const data = {
+    pickupLoc: g('f_pickupLoc').value || 'TBD',
+    deliveryLoc: g('f_deliveryLoc').value || 'TBD',
+    pickupAt: g('f_pickupAt').value ? new Date(g('f_pickupAt').value).toISOString() : new Date().toISOString(),
+    deliveryAt: g('f_deliveryAt').value ? new Date(g('f_deliveryAt').value).toISOString() : new Date().toISOString(),
+    shipperId: g('f_shipperId').value || null,
+    brokerId: g('f_brokerId').value || null,
+    rate: parseFloat(g('f_rate').value)||0,
+    miles: parseInt(g('f_miles').value)||0,
+    hours: parseFloat(g('f_hours').value)||0,
+    equipment: g('f_equipment').value,
+    status: g('f_status').value,
+    truckId: g('f_truckId').value || null,
+    trailerId: g('f_trailerId').value || null,
+    driverId: g('f_driverId').value || null,
+    detention: parseFloat(g('f_detention').value)||0,
+    layover: parseFloat(g('f_layover').value)||0,
+    tonu: parseFloat(g('f_tonu').value)||0,
+    notes: g('f_notes').value,
+  };
+  if(editingLoadId){
+    const existing = DB.loads.find(x=>x.id===editingLoadId);
+    Object.assign(existing, data);
+    existing.docs.ratecon = docFile('f_doc_ratecon') || existing.docs.ratecon;
+    existing.docs.bol = docFile('f_doc_bol') || existing.docs.bol;
+    existing.docs.pod = docFile('f_doc_pod') || existing.docs.pod;
+  } else {
+    const num = 1000 + DB.loads.length + 1;
+    data.id = 'L-' + num;
+    data.docs = { ratecon: docFile('f_doc_ratecon'), bol: docFile('f_doc_bol'), pod: docFile('f_doc_pod') };
+    DB.loads.push(data);
+  }
+  saveDB();
+  closeModal();
+  renderDispatch(document.getElementById('main'));
+}
+
+function deleteLoad(loadId){
+  const l = DB.loads.find(x=>x.id===loadId);
+  if(!l) return;
+  if(confirm(`Delete load ${l.id}?\n\nRoute: ${l.pickupLoc} → ${l.deliveryLoc}\nRate: ${fmtMoney(l.rate)}\n\nThis action cannot be undone.`)){
+    DB.loads = DB.loads.filter(x=>x.id!==loadId);
+    saveDB();
+    renderDispatch(document.getElementById('main'));
+    alert(`✓ Load ${l.id} deleted.`);
+  }
+}
+
+/* ---------- DRIVER PORTAL ---------- */
+function renderDriverLoads(main, completedOnly){
+  const myId = 'drv1'; // demo driver: Marcus Reyes
+  const driver = DB.drivers.find(d=>d.id===myId);
+  const mine = DB.loads.filter(l=> l.driverId===myId && (completedOnly ? ['delivered','documents_pending','invoiced','paid'].includes(l.status) : !['delivered','documents_pending','invoiced','paid','cancelled'].includes(l.status)));
+
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>${completedOnly?'Completed Loads':'My Loads'}</h1><div class="desc">Marcus Reyes — Driver Portal</div></div></div>
+  <div class="card-list">${mine.length? mine.map(l=>`
+    <div class="load-card">
+      <div class="lc-top"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span><span class="mono">${l.id}</span></div>
+      <div class="lc-route">${l.pickupLoc} → ${l.deliveryLoc}</div>
+      <div class="lc-meta">
+        <span>Pickup: ${fmtDate(l.pickupAt)}</span><span>Delivery: ${fmtDate(l.deliveryAt)}</span><span>${l.miles} mi</span>
+      </div>
+
+      <div style="margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--dim);margin-bottom:6px;">Load Rate</div>
+        <div style="font-weight:700;font-size:18px;color:var(--accent);">${fmtMoney(l.rate)}</div>
+      </div>
+
+      ${l.status === 'delivered' ? `<div style="margin-top:12px;padding:12px;background:#1B3B27;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--dim);margin-bottom:6px;">Your Payment</div>
+        <div style="font-weight:700;font-size:18px;color:#4CAF50;">${(() => {
+          const driver = DB.drivers.find(d=>d.id===l.driverId);
+          if(!driver) return fmtMoney(0);
+          let payment = 0;
+          if(driver.payType === 'per_mile') {
+            payment = (l.miles || 0) * (driver.milesRate || driver.payRate || 0);
+          } else if(driver.payType === 'per_hour') {
+            const hoursEstimate = (l.miles || 0) / 60; // Estimate: ~60mph average
+            payment = hoursEstimate * (driver.hourlyRate || 0);
+          } else if(driver.payType === 'percentage') {
+            payment = l.rate * ((driver.percentageRate || driver.payRate || 0) / 100);
+          }
+          return fmtMoney(payment);
+        })()}</div>
+        <div style="font-size:11px;color:var(--dim);margin-top:6px;">
+          ${(() => {
+            const driver = DB.drivers.find(d=>d.id===l.driverId);
+            if(!driver) return '';
+            if(driver.payType === 'per_mile') return l.miles + ' miles × $' + (driver.milesRate || driver.payRate).toFixed(2) + '/mi';
+            else if(driver.payType === 'per_hour') return '~' + ((l.miles || 0)/60).toFixed(1) + ' hours × $' + driver.hourlyRate.toFixed(2) + '/hr';
+            else if(driver.payType === 'percentage') return (driver.percentageRate || driver.payRate).toFixed(0) + '% of load rate';
+            return '';
+          })()}
+        </div>
+      </div>` : ''}
+
+      ${!completedOnly ? `
+      <div class="lc-meta" style="margin-top:14px;">
+        <select onchange="driverUpdateStatus('${l.id}',this.value)" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;">
+          ${STATUSES.filter(s=>['assigned','dispatched','at_pickup','loaded','in_transit','at_delivery','delivered'].includes(s)).map(s=>`<option value="${s}" ${l.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}
+        </select>
+        <button class="btn small secondary" onclick="driverUploadDoc('${l.id}','bol')">Upload BOL${l.docs.bol?' ✓':''}</button>
+        <button class="btn small secondary" onclick="driverUploadDoc('${l.id}','pod')">Upload POD${l.docs.pod?' ✓':''}</button>
+      </div>` : `<div class="lc-meta"><span>${l.docs.pod?'POD on file':'No POD'}</span></div>`}
+    </div>`
+  ).join('') : '<div class="empty">No loads to show.</div>'}
+  </div>`;
+}
+function driverUpdateStatus(id, status){
+  const l = DB.loads.find(x=>x.id===id); l.status=status; saveDB(); renderDriverLoads(document.getElementById('main'), false);
+}
+function driverUploadDoc(id, type){
+  const l = DB.loads.find(x=>x.id===id); l.docs[type] = `${type}_${id}_mobile.jpg`; saveDB(); renderDriverLoads(document.getElementById('main'), false);
+}
+
+/* ---------- DRIVER PAYSTUBS ---------- */
+function renderDriverPaystubs(main){
+  const myId = 'drv1'; // demo driver: Marcus Reyes
+  const driver = DB.drivers.find(d=>d.id===myId);
+  const myPaystubs = DB.w2Payrolls.filter(p=>p.driverId===myId);
+
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>My Paystubs</h1><div class="desc">Marcus Reyes — W-2 Payroll History</div></div></div>
+  <div class="card-list">${myPaystubs.length? myPaystubs.map(p=>`
+    <div class="load-card">
+      <div class="lc-top"><span class="pill st-${p.status==='paid'?'paid':p.status==='approved'?'dispatched':'at_pickup'}">${p.status}</span><span class="mono">${p.id}</span></div>
+      <div class="lc-route">Pay Period: ${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</div>
+      <div class="lc-meta">
+        <span>Regular: ${p.regularHours}h</span><span>Overtime: ${p.overtimeHours}h</span><span>Status: ${p.status}</span>
+      </div>
+
+      <div style="margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">Gross Wages</div>
+            <div style="font-weight:700;font-size:16px;color:var(--accent);">${fmtMoney(p.grossWages)}</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">Net Pay</div>
+            <div style="font-weight:700;font-size:16px;color:var(--accent2);">${fmtMoney(p.netPay)}</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;font-size:12px;color:var(--dim);">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Federal Tax:</span><span>${fmtMoney(p.federalIncome)}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>FICA:</span><span>${fmtMoney(p.socialSecurity + p.medicare)}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Benefits/Deductions:</span><span>${fmtMoney(p.healthInsurance + p.dentalInsurance + p.visionInsurance + p.retirement401k)}</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn small secondary" onclick="openPaystubDetail('${p.id}')">View Full Details</button>
+      </div>
+    </div>`
+  ).join('') : '<div class="empty">No paystubs yet. Check back after payroll is processed.</div>'}
+  </div>`;
+}
+
+function openPaystubDetail(payrollId){
+  const p = DB.w2Payrolls.find(x=>x.id===payrollId);
+  if(!p) { alert('Paystub not found'); return; }
+  const d = DB.drivers.find(x=>x.id===p.driverId);
+  if(!d) { alert('Driver not found'); return; }
+  const totalTaxes = p.federalIncome + p.socialSecurity + p.medicare + p.stateIncome + p.localTaxes;
+  const totalDeduct = p.healthInsurance + p.dentalInsurance + p.visionInsurance + p.retirement401k + p.otherDeductions;
+
+  document.getElementById('main').innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('mypaystubs')">← Back to Paystubs</button><h1>Paystub Details</h1><div class="desc">${d.name} (${d.employeeId}) · ${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</div></div></div>
+
+  <div class="dash-cols">
+    <div class="panel">
+      <h3>Gross Wages</h3>
+      <div class="row-item"><div class="t1">Regular Hours (${p.regularHours}h)</div><div>${fmtMoney(p.regularHours * d.hourlyRate)}</div></div>
+      <div class="row-item"><div class="t1">Overtime Hours (${p.overtimeHours}h)</div><div>${fmtMoney(p.overtimeHours * d.overtimeRate)}</div></div>
+      <div class="row-item"><div class="t1">Mileage Pay</div><div>${fmtMoney(p.milesPay)}</div></div>
+      <div class="row-item"><div class="t1">Percentage Pay</div><div>${fmtMoney(p.percentagePay)}</div></div>
+      <div class="row-item"><div class="t1">Bonuses</div><div>${fmtMoney(p.bonuses)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Reimbursements</div><div>${fmtMoney(p.reimbursements)}</div></div>
+      <div class="row-item" style="font-weight:700;font-size:16px;"><div class="t1">GROSS WAGES</div><div style="color:var(--accent);">${fmtMoney(p.grossWages)}</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>Deductions</h3>
+      <div class="row-item"><div class="t1">Federal Income Tax</div><div>${fmtMoney(p.federalIncome)}</div></div>
+      <div class="row-item"><div class="t1">Social Security (6.2%)</div><div>${fmtMoney(p.socialSecurity)}</div></div>
+      <div class="row-item"><div class="t1">Medicare (1.45%)</div><div>${fmtMoney(p.medicare)}</div></div>
+      <div class="row-item"><div class="t1">State Income Tax</div><div>${fmtMoney(p.stateIncome)}</div></div>
+      <div class="row-item" style="border-bottom:1px solid var(--border);"><div class="t1">Local Taxes</div><div>${fmtMoney(p.localTaxes)}</div></div>
+      <div class="row-item" style="color:var(--dim);font-size:12px;"><div class="t1">Subtotal Taxes</div><div>${fmtMoney(totalTaxes)}</div></div>
+
+      <div class="row-item" style="margin-top:12px;"><div class="t1">Health Insurance</div><div>${fmtMoney(p.healthInsurance)}</div></div>
+      <div class="row-item"><div class="t1">Dental Insurance</div><div>${fmtMoney(p.dentalInsurance)}</div></div>
+      <div class="row-item"><div class="t1">Vision Insurance</div><div>${fmtMoney(p.visionInsurance)}</div></div>
+      <div class="row-item"><div class="t1">401k Contribution</div><div>${fmtMoney(p.retirement401k)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Other Deductions</div><div>${fmtMoney(p.otherDeductions)}</div></div>
+      <div class="row-item" style="font-weight:700;font-size:16px;"><div class="t1">TOTAL DEDUCTIONS</div><div style="color:var(--danger);">${fmtMoney(totalTaxes + totalDeduct)}</div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="text-align:center;padding:24px;margin-top:16px;background:var(--panel2);border-radius:12px;">
+    <div style="font-size:14px;color:var(--dim);margin-bottom:8px;">NET PAY</div>
+    <div style="font-size:40px;font-weight:700;color:var(--accent2);">${fmtMoney(p.netPay)}</div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+      <span class="pill" style="background:${p.status==='paid'?'#1B3B27':'#4A3A1E'};color:${p.status==='paid'?'#5FE39A':'var(--accent)'};padding:8px 16px;">Status: ${p.status}</span>
+    </div>
+  </div>
+  `;
+}
+
+/* ---------- CUSTOMER PORTAL ---------- */
+function renderCustomerLoads(main){
+  const myCustId = 'cus1'; // demo customer: Coastal Foods
+  const mine = DB.loads.filter(l=>l.shipperId===myCustId);
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>My Shipments</h1><div class="desc">Coastal Foods Inc. — Customer Portal</div></div></div>
+  <div class="card-list">${mine.map(l=>`
+    <div class="load-card">
+      <div class="lc-top"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span><span class="mono">${l.id}</span></div>
+      <div class="lc-route">${l.pickupLoc} → ${l.deliveryLoc}</div>
+      <div class="lc-meta"><span>Pickup: ${fmtDate(l.pickupAt)}</span><span>Delivery: ${fmtDate(l.deliveryAt)}</span><span>${l.docs.pod?'POD available':'POD pending'}</span></div>
+    </div>`).join('')}</div>`;
+}
+function renderCustomerInvoices(main){
+  const myCustId = 'cus1';
+  const mine = DB.loads.filter(l=>l.shipperId===myCustId && ['invoiced','paid'].includes(l.status));
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Invoices</h1><div class="desc">Coastal Foods Inc.</div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Load #</th><th>Route</th><th>Amount</th><th>Status</th></tr></thead>
+  <tbody>${mine.map(l=>`<tr><td class="mono">${l.id}</td><td>${l.pickupLoc} → ${l.deliveryLoc}</td><td>${fmtMoney(l.rate)}</td><td><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></td></tr>`).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:20px;">No invoices yet.</td></tr>`}</tbody></table></div>`;
+}
+
+/* ---------- LOAD BOARD INTEGRATION ---------- */
+function pillColor(bg,fg,text){ return `<span class="pill" style="background:${bg};color:${fg}">${text}</span>`; }
+const LB_STATUS_COLOR = {posted:['#2A3B57','#8FB4F0'], booked:['#1B3B27','#5FE39A'], removed:['#3B1E1E',"#E5555C"]};
+function renderLoadBoard(main){
+  const available = DB.loads.filter(l=>l.status==='available');
+  const postings = DB.loadBoardPostings;
+  const configs = DB.loadBoardConfig || [];
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Load Board</h1><div class="desc">Connect to DAT, Truckstop.com, and Brokerages — post loads and pull freight</div></div></div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>Load Board Integrations</h3>
+    <div class="row-item"><div><div class="t1">DAT One</div><div class="t2">Real-time freight marketplace for carriers</div></div><button class="btn small" onclick="openLBConfigModal('DAT')">Configure</button></div>
+    <div class="row-item"><div><div class="t1">Truckstop.com</div><div class="t2">Load board with 200K+ active loads</div></div><button class="btn small" onclick="openLBConfigModal('Truckstop.com')">Configure</button></div>
+    <div class="row-item"><div><div class="t1">Carrier Exchange / Echo</div><div class="t2">Brokerage freight and partner loads</div></div><button class="btn small" onclick="openLBConfigModal('Brokerages')">Configure</button></div>
+  </div>
+
+  <div class="dash-cols" style="grid-template-columns:1fr 1fr;">
+    <div class="panel">
+      <h3>Your Open Loads</h3>
+      ${available.length ? available.map(l=>{
+        const posting = postings.find(p=>p.loadId===l.id && p.status==='posted');
+        return `<div class="row-item"><div><div class="t1">${l.id} — ${l.pickupLoc} → ${l.deliveryLoc}</div><div class="t2">${fmtMoney(l.rate)} · ${l.miles} mi · ${l.equipment.replace('_',' ')}</div></div>
+        <div>${posting ? pillColor(...LB_STATUS_COLOR.posted,'Posted to '+posting.board) : `<button class="btn small" onclick="postToBoard('${l.id}')">Post to Boards</button>`}</div></div>`;
+      }).join('') : '<div class="empty">No available loads to post right now.</div>'}
+    </div>
+    <div class="panel">
+      <h3>Active Postings</h3>
+      ${postings.filter(p=>p.status==='posted').length ? postings.filter(p=>p.status==='posted').map(p=>`
+        <div class="row-item"><div><div class="t1">${p.loadId} on ${p.board}</div><div class="t2">${p.externalRef} · ${fmtMoney(p.postedRate)}</div></div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn small" onclick="bookPosting('${p.id}')">Mark Booked</button>
+          <button class="btn small secondary" onclick="removePosting('${p.id}')">Remove</button>
+        </div></div>`).join('') : '<div class="empty">Nothing currently posted.</div>'}
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <h3>Live Marketplace Feed</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Board</th><th>Broker</th><th>Route</th><th>Pickup</th><th>Equip.</th><th>Rate</th><th></th></tr></thead>
+    <tbody>${DB.loadBoardListings.filter(x=>!x.imported).map(x=>`
+      <tr><td><strong>${x.board}</strong></td><td>${x.broker}</td><td>${x.origin} → ${x.destination}<div class="mono">${x.miles} mi</div></td><td>${fmtDate(x.pickupDate)}</td><td>${x.equipment.replace('_',' ')}</td><td>${fmtMoney(x.rate)}</td>
+      <td><button class="btn small" onclick="importListing('${x.id}')">Import to Dispatch</button></td></tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px;">No external listings match your lanes right now.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+function openLBConfigModal(board){
+  const config = DB.loadBoardConfig.find(c=>c.board===board);
+  if(!config) return;
+  openEntityModal(`Configure ${config.name}`, `Add your API credentials to automatically sync loads`, [
+    {id:'apiKey',label:'API Key',span2:true},
+    {id:'apiUrl',label:'API Endpoint (optional)',span2:true},
+    {id:'autoPost',label:'Auto-post available loads?',type:'select',options:[{value:'no',label:'No — manual posting only'},{value:'yes',label:'Yes — post automatically'}]},
+  ], {apiKey:config.apiKey||'', apiUrl:config.apiUrl||'', autoPost:'no'}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    config.apiKey = g('apiKey');
+    config.apiUrl = g('apiUrl');
+    config.connected = !!g('apiKey');
+    saveDB();
+    renderLoadBoard(document.getElementById('main'));
+    alert(`✅ ${config.name} configured!\n\nNote: In production, this API key is encrypted and stored securely.`);
+  });
+}
+function postToBoard(loadId){
+  const l = DB.loads.find(x=>x.id===loadId);
+  const boards = ['DAT', 'Truckstop.com', 'Brokerages'];
+  const boardChoices = boards.map(b=>{
+    const config = DB.loadBoardConfig.find(c=>c.board===b);
+    const status = config?.connected ? '✓ Connected' : 'Not configured';
+    return {value:b, label:`${config?.name || b} — ${status}`};
+  });
+
+  openEntityModal('Post Load to Boards', `Select which boards to post ${l.id} to`, [
+    {id:'boards',label:'Post to:',type:'select',options:boardChoices,span2:true},
+  ], {boards:'DAT'}, ()=>{
+    const board = document.getElementById('ent_boards').value;
+    const prefix = board==='DAT'?'DAT':board==='Truckstop.com'?'TS':'BR';
+    DB.loadBoardPostings.push({id:'lbp'+Date.now(), loadId, board, externalRef:prefix+'-'+Math.floor(Math.random()*90000+10000)+'-'+loadId.slice(2), postedRate:l.rate, status:'posted', postedAt:new Date().toISOString()});
+    saveDB(); renderLoadBoard(document.getElementById('main'));
+    alert(`✅ Load posted to ${board}!`);
+  });
+}
+function bookPosting(id){
+  const p = DB.loadBoardPostings.find(x=>x.id===id); p.status='booked'; p.bookedAt=new Date().toISOString();
+  const l = DB.loads.find(x=>x.id===p.loadId); if(l && l.status==='available') l.status='assigned';
+  saveDB(); renderLoadBoard(document.getElementById('main'));
+}
+function removePosting(id){
+  const p = DB.loadBoardPostings.find(x=>x.id===id); p.status='removed';
+  saveDB(); renderLoadBoard(document.getElementById('main'));
+}
+function importListing(id){
+  const x = DB.loadBoardListings.find(l=>l.id===id);
+  const num = 1000 + DB.loads.length + 1; const newId = 'L-'+num;
+  let broker = DB.customers.find(c=>c.name===x.broker);
+  if(!broker){ broker = {id:'cus'+Date.now(), name:x.broker, type:'broker', contact:'', email:'', phone:'', terms:'Quick Pay'}; DB.customers.push(broker); }
+  DB.loads.push({id:newId, shipperId:null, brokerId:broker.id, pickupLoc:x.origin, deliveryLoc:x.destination, pickupAt:x.pickupDate, deliveryAt:x.pickupDate, rate:x.rate, miles:x.miles, equipment:x.equipment, truckId:null, trailerId:null, driverId:null, status:'available', detention:0, layover:0, tonu:0, notes:'Imported from '+x.board+' ('+x.externalRef+')', docs:{}});
+  x.imported = true;
+  saveDB(); renderLoadBoard(document.getElementById('main'));
+}
+
+/* ---------- FACTORING INTEGRATION ---------- */
+const FACT_STATUS_COLOR = {submitted:['#2A2E4A','#9AA6F0'], approved:['#33325A','#B6A9F5'], funded:['#173A24','#5FE39A'], reserve_released:['#1B3B27','#5FE39A'], rejected:['#3B1E1E','#E5555C']};
+const FACT_STATUS_LABEL = {submitted:'Submitted', approved:'Approved', funded:'Funded', reserve_released:'Reserve Released', rejected:'Rejected'};
+function renderFactoring(main){
+  const invoiced = DB.loads.filter(l=>l.status==='invoiced');
+  const subs = DB.factoringSubmissions;
+  const totalAdvanced = subs.reduce((s,f)=>{ const fc=DB.factoringCompanies.find(c=>c.id===f.factoringId); return s + (fc ? (f.amount * fc.advanceRate/100) : 0); },0);
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Factoring</h1><div class="desc">Submit invoices for same-day advances and track funding</div></div>${currentUser && currentUser.role === 'owner_admin' ? '<button class="btn" onclick="openFactoringCompanyModal()">+ Add Company</button>' : ''}</div>
+  <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="kpi accent"><div class="lbl">Ready to Submit</div><div class="stat-num">${invoiced.filter(l=>!subs.find(s=>s.loadId===l.id)).length}</div><div class="sub">Invoiced, not yet factored</div></div>
+    <div class="kpi good"><div class="lbl">Total Advanced</div><div class="stat-num">${fmtMoney(totalAdvanced)}</div><div class="sub">Across ${subs.length} submission(s)</div></div>
+    <div class="kpi"><div class="lbl">Factoring Partners</div><div class="stat-num">${DB.factoringCompanies.filter(c=>c.active).length}</div><div class="sub">${DB.factoringCompanies.map(c=>c.name).join(' · ')}</div></div>
+  </div>
+  ${currentUser && currentUser.role === 'owner_admin' ? `
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>💼 Connected Companies (${DB.factoringCompanies.length}/5)</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Company</th><th>API Status</th><th>Advance Rate</th><th>Fee %</th><th>Status</th><th></th></tr></thead>
+    <tbody>${DB.factoringCompanies.map(c=>'<tr><td><b>'+c.name+'</b></td><td style="font-size:12px;color:var(--dim);">'+(c.apiKey?'<span style="color:#5FE39A;">✓ Connected</span>':'<span style="color:#E5555C;">✗ Not Connected</span>')+'</td><td>'+c.advanceRate+'%</td><td>'+c.feePct+'%</td><td>'+(c.active?'<span class="pill" style="background:#173A24;color:#5FE39A">Active</span>':'<span class="pill" style="background:#3B1E1E;color:#E5555C">Inactive</span>')+'</td><td><button class="btn small secondary" onclick="openFactoringCompanyModal(\''+c.id+'\')">Edit</button></td></tr>').join('')}</tbody></table></div>
+  </div>
+  ` : ''}
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>Invoiced Loads</h3>
+    ${invoiced.length ? invoiced.map(l=>{
+      const sub = subs.find(s=>s.loadId===l.id);
+      const docsReady = l.docs.ratecon && l.docs.bol && l.docs.pod;
+      return `<div class="row-item"><div><div class="t1">${l.id} — ${custName(l.shipperId)}</div><div class="t2">${fmtMoney(l.rate)} · ${docsReady?'docs complete':'missing docs — funding may be delayed'}</div></div>
+      <div>${sub ? pillColor(...FACT_STATUS_COLOR[sub.status], FACT_STATUS_LABEL[sub.status]) : `<button class="btn small" onclick="submitFactoring('${l.id}')">Submit to Factoring</button>`}</div></div>`;
+    }).join('') : '<div class="empty">No invoiced loads waiting on factoring.</div>'}
+  </div>
+  <div class="panel">
+    <h3>Submissions</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Load</th><th>Factor</th><th>Amount</th><th>Advance</th><th>Reserve</th><th>Status</th><th></th></tr></thead>
+    <tbody>${subs.map(s=>{
+      const fc = DB.factoringCompanies.find(c=>c.id===s.factoringId);
+      if(!fc) return `<tr><td class="mono">${s.loadId}</td><td style="color:var(--danger);">Company not found</td><td>${fmtMoney(s.amount)}</td><td>—</td><td>—</td><td>${pillColor(...FACT_STATUS_COLOR[s.status],FACT_STATUS_LABEL[s.status])}</td><td></td></tr>`;
+      const advance = s.amount*fc.advanceRate/100, fee = s.amount*fc.feePct/100, reserve = s.amount-advance-fee;
+      return `<tr><td class="mono">${s.loadId}</td><td>${fc.name}</td><td>${fmtMoney(s.amount)}</td><td>${fmtMoney(advance)}</td><td>${fmtMoney(reserve)}</td><td>${pillColor(...FACT_STATUS_COLOR[s.status],FACT_STATUS_LABEL[s.status])}</td>
+      <td>${s.status==='submitted'?`<button class="btn small" onclick="advanceFactoring('${s.id}')">Mark Funded</button>`:''}</td></tr>`;
+    }).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px;">No submissions yet.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+function submitFactoring(loadId){
+  const l = DB.loads.find(x=>x.id===loadId);
+  const fc = DB.factoringCompanies[0];
+  DB.factoringSubmissions.push({id:'fs'+Date.now(), loadId, factoringId:fc.id, amount:l.rate, status:'submitted', submittedAt:new Date().toISOString(), fundedAt:null});
+  saveDB(); renderFactoring(document.getElementById('main'));
+}
+function advanceFactoring(subId){
+  const s = DB.factoringSubmissions.find(x=>x.id===subId); s.status='funded'; s.fundedAt=new Date().toISOString();
+  const l = DB.loads.find(x=>x.id===s.loadId); if(l) l.status='paid';
+  saveDB(); renderFactoring(document.getElementById('main'));
+}
+
+function openFactoringCompanyModal(id){
+  if(DB.factoringCompanies.length >= 5 && !id){
+    alert('Maximum 5 factoring companies allowed');
+    return;
+  }
+  const c = id ? DB.factoringCompanies.find(x=>x.id===id) : null;
+  openEntityModal(c?'Edit Factoring Company':'Add Factoring Company', c?'Update API credentials and settings':'Connect a new factoring company', [
+    {id:'name',label:'Company Name',span2:true},
+    {id:'apiKey',label:'API Key / Credentials',span2:true},
+    {id:'apiUrl',label:'API Endpoint URL',span2:true},
+    {id:'advanceRate',label:'Advance Rate (%)',type:'number'},
+    {id:'feePct',label:'Fee Percentage (%)',type:'number'},
+    {id:'active',label:'Status',type:'select',options:[{value:true,label:'Active'},{value:false,label:'Inactive'}]},
+  ], c||{active:true}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),apiKey:g('apiKey'),apiUrl:g('apiUrl'),advanceRate:parseFloat(g('advanceRate'))||0,feePct:parseFloat(g('feePct'))||0,active:g('active')==='true'||g('active')===true};
+    if(c) Object.assign(c,data);
+    else DB.factoringCompanies.push({id:'fc'+Date.now(), ...data});
+    saveDB(); renderFactoring(document.getElementById('main'));
+    alert('✓ Factoring company '+(c?'updated':'added'));
+  });
+}
+
+/* ---------- GENERIC ENTITY MODAL (Fleet / Drivers / Customers / Accounting forms) ---------- */
+let entitySaveCallback = null;
+function openEntityModal(title, sub, fields, values, onSave){
+  document.getElementById('entityModalTitle').textContent = title;
+  document.getElementById('entityModalSub').textContent = sub || '';
+  document.getElementById('entityFormGrid').innerHTML = fields.map(f=>{
+    const val = (values && values[f.id]!=null) ? values[f.id] : '';
+    if(f.type==='select') return `<div class="field ${f.span2?'span2':''}"><label>${f.label}</label><select id="ent_${f.id}" ${f.readonly?'disabled':''}>${f.options.map(o=>`<option value="${o.value}" ${String(o.value)===String(val)?'selected':''}>${o.label}</option>`).join('')}</select></div>`;
+    if(f.type==='textarea') return `<div class="field span2"><label>${f.label}</label><textarea id="ent_${f.id}" ${f.readonly?'readonly':''}>${val}</textarea></div>`;
+    return `<div class="field ${f.span2?'span2':''}"><label>${f.label}</label><input type="${f.type||'text'}" id="ent_${f.id}" value="${val}" ${f.readonly?'readonly':''}></div>`;
+  }).join('');
+  entitySaveCallback = onSave;
+  document.getElementById('entityOverlay').classList.add('open');
+}
+function closeEntityModal(){ document.getElementById('entityOverlay').classList.remove('open'); entitySaveCallback=null; }
+function saveEntityModal(){ if(entitySaveCallback) entitySaveCallback(); closeEntityModal(); }
+function expPill(dateStr){
+  const dd = daysUntil(dateStr);
+  const color = dd<=7 ? ['#3B1E1E','#E5555C'] : dd<=30 ? ['#4A3A1E','#F0C878'] : ['#1B3B27','#5FE39A'];
+  return pillColor(color[0], color[1], fmtDateOnly(dateStr) + (dd<=30 ? ` (${dd}d)` : ''));
+}
+
+/* ---------- FLEET ---------- */
+function renderFleet(main){
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Fleet Management</h1><div class="desc">Trucks and trailers — compliance at a glance</div></div>
+    <div style="display:flex;gap:8px;"><button class="btn secondary" onclick="openTrailerModal()">+ Trailer</button><button class="btn" onclick="openTruckModal()">+ Truck</button></div></div>
+  <div class="panel" style="margin-bottom:16px;"><h3>Trucks</h3>
+  <div class="table-wrap" style="border:none;"><table><thead><tr><th>Unit</th><th>VIN</th><th>Plate</th><th>Mileage</th><th>Insurance</th><th>Registration</th><th>Next Inspection</th><th></th></tr></thead>
+  <tbody>${DB.trucks.map(t=>`<tr><td>${t.unit}</td><td class="mono">${t.vin}</td><td>${t.plate}</td><td>${(t.mileage||0).toLocaleString()}</td>
+    <td>${expPill(t.insExp)}</td><td>${expPill(t.regExp)}</td><td>${expPill(t.nextInspection)}</td>
+    <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openTruckModal('${t.id}')">Edit</button><button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteTruck('${t.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="panel"><h3>Trailers</h3>
+  <div class="table-wrap" style="border:none;"><table><thead><tr><th>Unit</th><th>Type</th><th>Plate</th><th>Insurance</th><th>Registration</th><th></th></tr></thead>
+  <tbody>${DB.trailers.map(t=>`<tr><td>${t.unit}</td><td>${t.type}</td><td>${t.plate}</td><td>${expPill(t.insExp)}</td><td>${expPill(t.regExp)}</td>
+    <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openTrailerModal('${t.id}')">Edit</button><button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteTrailer('${t.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function openTruckModal(id){
+  const t = id ? DB.trucks.find(x=>x.id===id) : null;
+  openEntityModal(t?'Edit Truck':'Add Truck', 'VIN, plate and compliance dates', [
+    {id:'unit',label:'Unit Number'},{id:'vin',label:'VIN'},{id:'plate',label:'License Plate'},
+    {id:'mileage',label:'Mileage',type:'number'},{id:'insExp',label:'Insurance Expiration',type:'date'},
+    {id:'regExp',label:'Registration Expiration',type:'date'},{id:'nextInspection',label:'Next Inspection Due',type:'date'},
+  ], t||{}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={unit:g('unit'),vin:g('vin'),plate:g('plate'),mileage:parseInt(g('mileage'))||0,insExp:g('insExp'),regExp:g('regExp'),nextInspection:g('nextInspection')};
+    if(t) Object.assign(t,data); else DB.trucks.push({id:'trk'+Date.now(), ...data});
+    saveDB(); renderFleet(document.getElementById('main'));
+  });
+}
+function openTrailerModal(id){
+  const t = id ? DB.trailers.find(x=>x.id===id) : null;
+  openEntityModal(t?'Edit Trailer':'Add Trailer', '', [
+    {id:'unit',label:'Unit Number'},
+    {id:'type',label:'Type',type:'select',options:[{value:'Dry Van',label:'Dry Van'},{value:'Reefer',label:'Reefer'},{value:'Flatbed',label:'Flatbed'},{value:'Step Deck',label:'Step Deck'}]},
+    {id:'plate',label:'License Plate'},{id:'insExp',label:'Insurance Expiration',type:'date'},{id:'regExp',label:'Registration Expiration',type:'date'},
+  ], t||{}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={unit:g('unit'),type:g('type'),plate:g('plate'),insExp:g('insExp'),regExp:g('regExp')};
+    if(t) Object.assign(t,data); else DB.trailers.push({id:'tr'+Date.now(), ...data});
+    saveDB(); renderFleet(document.getElementById('main'));
+  });
+}
+
+function deleteTruck(truckId){
+  const t = DB.trucks.find(x=>x.id===truckId);
+  if(!t) return;
+  if(!confirm(`Delete truck: ${t.unit}?\n\nThis action cannot be undone.`)) return;
+
+  const idx = DB.trucks.findIndex(x=>x.id===truckId);
+  if(idx > -1){
+    DB.trucks.splice(idx, 1);
+    saveDB();
+    alert(`✓ Truck "${t.unit}" deleted successfully`);
+    renderFleet(document.getElementById('main'));
+  }
+}
+
+function deleteTrailer(trailerId){
+  const t = DB.trailers.find(x=>x.id===trailerId);
+  if(!t) return;
+  if(!confirm(`Delete trailer: ${t.unit}?\n\nThis action cannot be undone.`)) return;
+
+  const idx = DB.trailers.findIndex(x=>x.id===trailerId);
+  if(idx > -1){
+    DB.trailers.splice(idx, 1);
+    saveDB();
+    alert(`✓ Trailer "${t.unit}" deleted successfully`);
+    renderFleet(document.getElementById('main'));
+  }
+}
+
+/* ---------- DRIVERS ---------- */
+function renderDrivers(main){
+  // Role-based tab access
+  const roleCanSee = {
+    owner_admin: ['all', 'w2_employees', 'owner_operators'],
+    dispatcher: ['all', 'owner_operators'],
+    accounting: ['w2_employees', 'owner_operators'],
+    safety: ['all'],
+    driver: [],
+    customer: [],
+  };
+
+  const roleDefaultFilter = {
+    owner_admin: 'all',
+    dispatcher: 'all',
+    accounting: 'w2_employees',
+    safety: 'all',
+  };
+
+  const userRole = currentUser?.role || 'dispatcher';
+  const availableTabs = roleCanSee[userRole] || [];
+  const defaultFilter = roleDefaultFilter[userRole] || 'all';
+
+  const filter = window.driverFilter || defaultFilter;
+
+  // If user tries to access a tab they can't, redirect to default
+  if(!availableTabs.includes(filter)){
+    window.driverFilter = defaultFilter;
+    return renderDrivers(main);
+  }
+
+  let filtered = DB.drivers;
+  if(filter === 'w2_employees') filtered = DB.drivers.filter(d=>d.classification==='w2_employee');
+  if(filter === 'owner_operators') filtered = DB.drivers.filter(d=>d.classification==='owner_operator_1099');
+
+  const w2Count = DB.drivers.filter(d=>d.classification==='w2_employee').length;
+  const ooCount = DB.drivers.filter(d=>d.classification==='owner_operator_1099').length;
+
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Driver Management</h1><div class="desc">Profiles, CDL/medical compliance and assignments</div></div>
+  ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher') ? '<button class="btn" onclick="openDriverModal()">+ Driver</button>' : ''}</div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+    ${availableTabs.includes('all') ? `<button class="btn ${filter==='all'?'':'secondary'}" onclick="window.driverFilter='all';renderDrivers(document.getElementById('main'))">All Drivers (${DB.drivers.length})</button>` : ''}
+    ${availableTabs.includes('w2_employees') ? `<button class="btn ${filter==='w2_employees'?'':'secondary'}" onclick="window.driverFilter='w2_employees';renderDrivers(document.getElementById('main'))">W-2 Employees (${w2Count})</button>` : ''}
+    ${availableTabs.includes('owner_operators') ? `<button class="btn ${filter==='owner_operators'?'':'secondary'}" onclick="window.driverFilter='owner_operators';renderDrivers(document.getElementById('main'))">Owner-Operators (${ooCount})</button>` : ''}
+  </div>
+
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Classification</th><th>Phone</th><th>Email</th><th>CDL #</th><th>CDL Exp</th><th>Medical Exp</th><th>MVR</th><th>Truck</th><th>Loads</th><th>Status</th><th></th></tr></thead>
+  <tbody>${filtered.map(d=>{
+    const assignedLoads = DB.loads.filter(l=>l.driverId===d.id && !['delivered','invoiced','paid','cancelled'].includes(l.status)).length;
+    return `<tr><td><b>${d.name}</b>${d.employeeId ? ' <span style="color:var(--dim);font-size:12px;">('+d.employeeId+')</span>' : ''}</td><td style="font-size:12px;"><span class="pill" style="background:${d.classification==='w2_employee'?'#2E5C3E':'#3D4A6B'};color:${d.classification==='w2_employee'?'#5FE39A':'#8FB4F0'}">${d.classification==='w2_employee'?'W-2':'1099'}</span></td><td>${d.phone}</td><td>${d.email}</td><td class="mono">${d.cdl}</td>
+    <td>${expPill(d.cdlExp)}</td><td>${expPill(d.medExp)}</td><td>${d.mvr}</td><td>${truckUnit(d.truckId)}</td>
+    <td><span class="pill" style="background:${assignedLoads>0?'#3D4A6B':'transparent'};color:${assignedLoads>0?'#8FB4F0':'var(--dim)'}">${assignedLoads}</span></td>
+    <td><span class="pill" style="background:${d.status==='active'?'#1B3B27':'#3B1E1E'};color:${d.status==='active'?'#5FE39A':'#E5555C'}">${d.status}</span></td>
+    <td>${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher' || currentUser.role === 'accounting') ? '<button class="btn small secondary" onclick="openDriverModal(\''+d.id+'\')">Edit</button>' : ''}</td></tr>`;
+  }).join('')}</tbody></table></div>
+  `;
+}
+function updatePayRateLabel(){
+  const payTypeEl = document.getElementById('ent_payType');
+  const payRateLabel = document.querySelector('label[for="ent_payRate"]') || document.querySelector('[data-label-for="payRate"]');
+  if(!payTypeEl || !payRateLabel) return;
+  const payType = payTypeEl.value;
+  let label = 'Pay Rate';
+  if(payType==='per_mile') label = 'Pay Rate ($/mile)';
+  else if(payType==='per_hour') label = 'Pay Rate ($/hour)';
+  else if(payType==='percentage') label = 'Pay Rate (%)';
+  else if(payType==='salary') label = 'Pay Rate ($/week)';
+  payRateLabel.textContent = label;
+}
+
+function updateDriverPaymentInfo(){
+  const driverSelect = document.getElementById('f_driverId');
+  const driverId = driverSelect?.value;
+  const infoDiv = document.getElementById('driverPaymentInfo');
+
+  if(!driverId || !infoDiv) return;
+
+  const driver = DB.drivers.find(d=>d.id===driverId);
+  if(!driver) { infoDiv.style.display='none'; return; }
+
+  const miles = parseFloat(document.getElementById('f_miles')?.value || 0);
+  const hours = parseFloat(document.getElementById('f_hours')?.value || 0);
+
+  let paymentInfo = `<b>${driver.name}</b> ${driver.employeeId ? '('+driver.employeeId+')' : ''}<br>`;
+
+  if(driver.classification === 'w2_employee'){
+    paymentInfo += `<span style="color:var(--accent2);">W-2 Employee</span><br>`;
+    if(driver.payType === 'per_mile'){
+      paymentInfo += `Rate: $${driver.payRate}/mile<br>`;
+      if(miles > 0) paymentInfo += `Expected: $${(miles * driver.payRate).toFixed(2)}`;
+    } else if(driver.payType === 'per_hour'){
+      paymentInfo += `Rate: $${driver.payRate}/hour<br>`;
+      if(hours > 0) paymentInfo += `Expected: $${(hours * driver.payRate).toFixed(2)}`;
+    } else if(driver.payType === 'percentage'){
+      paymentInfo += `Rate: ${driver.payRate}% of load<br>`;
+      const rate = parseFloat(document.getElementById('f_rate')?.value || 0);
+      if(rate > 0) paymentInfo += `Expected: $${(rate * driver.payRate / 100).toFixed(2)}`;
+    }
+  } else {
+    paymentInfo += `<span style="color:#8FB4F0;">Owner-Operator (1099)</span><br>Rates: See settlement`;
+  }
+
+  infoDiv.innerHTML = paymentInfo;
+  infoDiv.style.display = 'block';
+}
+
+function getNextEmployeeId(){
+  const existingIds = DB.drivers.filter(d=>d.classification==='w2_employee').map(d=>d.employeeId).filter(id=>id && id.startsWith('DML'));
+  const numbers = existingIds.map(id=>parseInt(id.replace('DML',''))).filter(n=>!isNaN(n));
+  const nextNum = (numbers.length ? Math.max(...numbers) : 0) + 1;
+  return 'DML' + String(nextNum).padStart(2, '0');
+}
+
+function openDriverModal(id){
+  const d = id ? DB.drivers.find(x=>x.id===id) : null;
+  const nextEmpId = d ? d.employeeId : (getNextEmployeeId());
+  openEntityModal(d?'Edit Driver':'Add Driver', d && d.classification==='w2_employee' ? 'Driver & W-2 employee details' : 'Driver profile and compliance', [
+    {id:'name',label:'Full Name',span2:true},{id:'phone',label:'Phone'},{id:'email',label:'Email'},
+    {id:'classification',label:'Classification',type:'select',options:[{value:'w2_employee',label:'W-2 Employee'},{value:'owner_operator_1099',label:'Owner-Operator (1099)'}]},
+    {id:'cdl',label:'CDL Number'},{id:'cdlExp',label:'CDL Expiration',type:'date'},{id:'medExp',label:'Medical Card Expiration',type:'date'},
+    {id:'mvr',label:'MVR Notes',span2:true},
+    {id:'truckId',label:'Assigned Truck',type:'select',options:[{value:'',label:'Unassigned'},...DB.trucks.map(t=>({value:t.id,label:t.unit}))]},
+    {id:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'on_leave',label:'On Leave'},{value:'terminated',label:'Terminated'}]},
+    // W-2 Employee fields
+    {id:'employeeId',label:'Employee ID',readonly:true},
+    {id:'hourlyRate',label:'Hourly Rate ($)',type:'number'},
+    {id:'overtimeRate',label:'Overtime Rate ($)',type:'number'},
+    {id:'milesRate',label:'Per-Mile Rate ($)',type:'number'},
+    {id:'percentageRate',label:'Percentage Rate (%)',type:'number'},
+    {id:'w4Filing',label:'W-4 Filing Status',type:'select',options:[{value:'single',label:'Single'},{value:'married',label:'Married'},{value:'head_household',label:'Head of Household'}]},
+    {id:'federalWithholding',label:'Federal Withholding Allowances',type:'number'},
+    {id:'state',label:'State',span2:true},
+    {id:'healthInsurance',label:'Health Insurance ($)',type:'number'},
+    {id:'dentalInsurance',label:'Dental Insurance ($)',type:'number'},
+    {id:'visionInsurance',label:'Vision Insurance ($)',type:'number'},
+    {id:'retirement401k',label:'401(k) Contribution ($)',type:'number'},
+    {id:'hireDate',label:'Hire Date',type:'date'},
+  ], d||{employeeId:nextEmpId, hourlyRate:20, overtimeRate:30, milesRate:0.40, percentageRate:0.08, w4Filing:'single', federalWithholding:1, state:'OH', healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:100}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),phone:g('phone'),email:g('email'),cdl:g('cdl'),cdlExp:g('cdlExp'),medExp:g('medExp'),mvr:g('mvr'),truckId:g('truckId')||null,status:g('status'),classification:g('classification')};
+    // Add W-2 fields if W-2 employee
+    if(g('classification')==='w2_employee'){
+      data.employeeId = nextEmpId;
+      data.hourlyRate = parseFloat(g('hourlyRate'))||20;
+      data.overtimeRate = parseFloat(g('overtimeRate'))||30;
+      data.milesRate = parseFloat(g('milesRate'))||0.40;
+      data.percentageRate = parseFloat(g('percentageRate'))||0.08;
+      data.w4Filing = g('w4Filing');
+      data.federalWithholding = parseInt(g('federalWithholding'))||1;
+      data.state = g('state');
+      data.healthInsurance = parseFloat(g('healthInsurance'))||250;
+      data.dentalInsurance = parseFloat(g('dentalInsurance'))||35;
+      data.visionInsurance = parseFloat(g('visionInsurance'))||15;
+      data.retirement401k = parseFloat(g('retirement401k'))||100;
+      data.hireDate = g('hireDate');
+    }
+    if(d) Object.assign(d,data); else DB.drivers.push({id:'drv'+Date.now(), ...data});
+    saveDB(); renderDrivers(document.getElementById('main'));
+  });
+}
+
+/* ---------- CUSTOMERS ---------- */
+function renderCustomersPage(main){
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Customer Management</h1><div class="desc">Shippers, brokers, billing terms and load history</div></div>
+  <button class="btn" onclick="openCustomerModal()">+ Customer</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Contact</th><th>Email</th><th>Phone</th><th>Terms</th><th>Loads</th><th>Revenue</th><th></th></tr></thead>
+  <tbody>${DB.customers.map(c=>{
+    const cLoads = DB.loads.filter(l=>l.shipperId===c.id||l.brokerId===c.id);
+    const rev = cLoads.reduce((s,l)=>s+l.rate,0);
+    return `<tr><td>${c.name}</td><td>${c.type}</td><td>${c.contact||'—'}</td><td>${c.email||'—'}</td><td>${c.phone||'—'}</td><td>${c.terms||'—'}</td><td>${cLoads.length}</td><td>${fmtMoney(rev)}</td>
+    <td><button class="btn small secondary" onclick="openCustomerModal('${c.id}')">Edit</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function openCustomerModal(id){
+  const c = id ? DB.customers.find(x=>x.id===id) : null;
+  openEntityModal(c?'Edit Customer':'Add Customer', '', [
+    {id:'name',label:'Company Name',span2:true},
+    {id:'type',label:'Type',type:'select',options:[{value:'shipper',label:'Shipper'},{value:'broker',label:'Broker'},{value:'both',label:'Both'}]},
+    {id:'terms',label:'Payment Terms'},{id:'contact',label:'Contact Name'},{id:'email',label:'Email'},{id:'phone',label:'Phone'},
+  ], c||{}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),type:g('type'),terms:g('terms'),contact:g('contact'),email:g('email'),phone:g('phone')};
+    if(c) Object.assign(c,data); else DB.customers.push({id:'cus'+Date.now(), ...data});
+    saveDB(); renderCustomersPage(document.getElementById('main'));
+  });
+}
+
+/* ---------- ACCOUNTING ---------- */
+function renderAccounting(main){
+  const tab = window.accountingTab || 'overview';
+
+  if(tab === 'payroll') return renderW2Payroll(main);
+  if(tab === 'settlements') return renderOwnerOpSettlements(main);
+  if(tab === 'invoices') return renderInvoicesTab(main);
+
+  // OVERVIEW TAB
+  const revenue = DB.loads.filter(l=>l.status!=='cancelled').reduce((s,l)=>s+l.rate+l.detention+l.layover+l.tonu,0);
+  const byCat = {};
+  DB.expenses.forEach(e=>{ byCat[e.category]=(byCat[e.category]||0)+e.amount; });
+  const totalExpenses = Object.values(byCat).reduce((a,b)=>a+b,0);
+  const invoiced = DB.loads.filter(l=>['invoiced','paid'].includes(l.status));
+
+  const pendingPayrolls = DB.w2Payrolls.filter(p=>p.status==='pending').length;
+  const pendingSettlements = DB.ownerOperatorSettlements.filter(s=>s.status==='pending').length;
+  const pendingInvoices = DB.loads.filter(l=>l.status==='documents_pending').length;
+
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="document.getElementById('navItems').querySelectorAll('[data-key=dashboard]')[0].click()">← Back to Dashboard</button><h1>Accounting</h1><div class="desc">Revenue, expenses, payroll and settlements</div></div>
+  <button class="btn" onclick="openExpenseModal()">+ Record Expense</button></div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+    <button class="btn ${tab==='overview'?'':'secondary'}" onclick="window.accountingTab='overview';renderAccounting(document.getElementById('main'))">Overview</button>
+    <button class="btn ${tab==='invoices'?'':'secondary'}" onclick="window.accountingTab='invoices';renderAccounting(document.getElementById('main'))">Invoices ${pendingInvoices?'('+pendingInvoices+')':''}</button>
+    <button class="btn ${tab==='payroll'?'':'secondary'}" onclick="window.accountingTab='payroll';renderAccounting(document.getElementById('main'))">W-2 Payroll ${pendingPayrolls?'('+pendingPayrolls+')':''}</button>
+    <button class="btn ${tab==='settlements'?'':'secondary'}" onclick="window.accountingTab='settlements';renderAccounting(document.getElementById('main'))">O/O Settlements ${pendingSettlements?'('+pendingSettlements+')':''}</button>
+  </div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="kpi good"><div class="lbl">Revenue</div><div class="stat-num">${fmtMoney(revenue)}</div><div class="sub">All loads booked</div></div>
+    <div class="kpi bad"><div class="lbl">Expenses</div><div class="stat-num">${fmtMoney(totalExpenses)}</div><div class="sub">${DB.expenses.length} entries</div></div>
+    <div class="kpi ${revenue-totalExpenses>=0?'good':'bad'}"><div class="lbl">Net Profit</div><div class="stat-num">${fmtMoney(revenue-totalExpenses)}</div><div class="sub">Revenue minus expenses</div></div>
+  </div>
+  <div class="dash-cols">
+    <div class="panel"><h3>Expenses by Category</h3>
+    ${Object.entries(byCat).map(([cat,amt])=>`<div class="row-item"><div class="t1">${cat.replace('_',' ')}</div><div>${fmtMoney(amt)}</div></div>`).join('') || '<div class="empty">No expenses recorded.</div>'}
+    </div>
+    <div class="panel"><h3>Invoices</h3>
+    ${invoiced.length ? invoiced.map(l=>{
+      const cust = DB.customers.find(c=>c.id===l.shipperId) || {name:'Unknown'};
+      return `<div class="row-item"><div><div class="t1">${l.id} — ${cust.name}</div><div class="t2">${fmtMoney(l.rate)} · Status: ${STATUS_LABEL[l.status]}</div></div><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></div>`;
+    }).join('') : '<div class="empty">No invoices yet.</div>'}
+    </div>
+  </div>`;
+}
+
+/* ---------- INVOICES TAB (Dispatch ↔ Accounting Link) ---------- */
+function renderInvoicesTab(main){
+  const delivered = DB.loads.filter(l=>l.status==='delivered');
+  const invoiced = DB.loads.filter(l=>l.status==='invoiced');
+  const paid = DB.loads.filter(l=>l.status==='paid');
+
+  const totalRevenue = [...delivered, ...invoiced, ...paid].reduce((s,l)=>s+l.rate+l.detention+l.layover+l.tonu,0);
+  const deliveredRevenue = delivered.reduce((s,l)=>s+l.rate+l.detention+l.layover+l.tonu,0);
+
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='overview';renderAccounting(document.getElementById('main'))">← Back to Accounting</button><h1>Invoices</h1><div class="desc">Manage invoices from dispatch loads</div></div></div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi accent"><div class="lbl">Ready to Invoice</div><div class="stat-num">${delivered.length}</div><div class="sub">${fmtMoney(deliveredRevenue)}</div></div>
+    <div class="kpi warn"><div class="lbl">Invoiced</div><div class="stat-num">${invoiced.length}</div></div>
+    <div class="kpi good"><div class="lbl">Paid</div><div class="stat-num">${paid.length}</div></div>
+    <div class="kpi"><div class="lbl">Total Revenue</div><div class="stat-num">${fmtMoney(totalRevenue)}</div></div>
+  </div>
+
+  ${delivered.length ? `<div class="panel" style="margin-bottom:16px;">
+    <h3>Ready to Invoice (${delivered.length} Delivered Loads)</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Load #</th><th>Customer</th><th>Route</th><th>Rate</th><th>Accessorials</th><th>Total</th><th></th></tr></thead>
+    <tbody>${delivered.map(l=>{
+      const total = l.rate + (l.detention||0) + (l.layover||0) + (l.tonu||0);
+      const cust = DB.customers.find(c=>c.id===l.customerId) || {name:'Unknown'};
+      return `<tr>
+        <td><strong>${l.id}</strong></td>
+        <td>${cust.name}</td>
+        <td>${l.pickupLoc} → ${l.deliveryLoc}</td>
+        <td>${fmtMoney(l.rate)}</td>
+        <td>${fmtMoney((l.detention||0) + (l.layover||0) + (l.tonu||0))}</td>
+        <td><strong>${fmtMoney(total)}</strong></td>
+        <td><button class="btn small" onclick="createInvoiceFromLoad('${l.id}')">Invoice</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+  </div>` : ''}
+
+  ${invoiced.length ? `<div class="panel" style="margin-bottom:16px;">
+    <h3>Invoiced (${invoiced.length})</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Load #</th><th>Customer</th><th>Route</th><th>Total</th><th>Status</th><th></th></tr></thead>
+    <tbody>${invoiced.map(l=>{
+      const total = l.rate + (l.detention||0) + (l.layover||0) + (l.tonu||0);
+      const cust = DB.customers.find(c=>c.id===l.customerId) || {name:'Unknown'};
+      return `<tr>
+        <td><strong>${l.id}</strong></td>
+        <td>${cust.name}</td>
+        <td>${l.pickupLoc} → ${l.deliveryLoc}</td>
+        <td>${fmtMoney(total)}</td>
+        <td><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></td>
+        <td><button class="btn small secondary" onclick="markInvoicePaid('${l.id}')">Mark Paid</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+  </div>` : ''}
+
+  ${paid.length ? `<div class="panel">
+    <h3>Paid (${paid.length})</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Load #</th><th>Customer</th><th>Route</th><th>Total</th><th>Status</th></tr></thead>
+    <tbody>${paid.map(l=>{
+      const total = l.rate + (l.detention||0) + (l.layover||0) + (l.tonu||0);
+      const cust = DB.customers.find(c=>c.id===l.customerId) || {name:'Unknown'};
+      return `<tr>
+        <td><strong>${l.id}</strong></td>
+        <td>${cust.name}</td>
+        <td>${l.pickupLoc} → ${l.deliveryLoc}</td>
+        <td>${fmtMoney(total)}</td>
+        <td><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+  </div>` : ''}
+  `;
+}
+
+function createInvoiceFromLoad(loadId){
+  const load = DB.loads.find(l=>l.id===loadId);
+  if(!load) return;
+
+  const total = load.rate + (load.detention||0) + (load.layover||0) + (load.tonu||0);
+  const cust = DB.customers.find(c=>c.id===load.customerId) || {name:'Unknown'};
+
+  if(!confirm(`Create invoice for load ${loadId}?\nCustomer: ${cust.name}\nAmount: ${fmtMoney(total)}`)) return;
+
+  // Update load status to invoiced
+  load.status = 'invoiced';
+  load.invoicedAt = new Date().toISOString();
+  load.invoiceNumber = 'INV-' + Date.now();
+
+  saveDB();
+  alert(`✓ Invoice ${load.invoiceNumber} created for ${cust.name}`);
+  window.accountingTab = 'invoices';
+  renderAccounting(document.getElementById('main'));
+}
+
+function markInvoicePaid(loadId){
+  const load = DB.loads.find(l=>l.id===loadId);
+  if(!load) return;
+
+  if(!confirm(`Mark invoice as paid for load ${loadId}?`)) return;
+
+  load.status = 'paid';
+  load.paidAt = new Date().toISOString();
+
+  saveDB();
+  alert('✓ Invoice marked as paid');
+  window.accountingTab = 'invoices';
+  renderAccounting(document.getElementById('main'));
+}
+
+function openExpenseModal(){
+  openEntityModal('Record Expense', '', [
+    {id:'category',label:'Category',type:'select',options:[{value:'fuel',label:'Fuel'},{value:'tolls',label:'Tolls'},{value:'maintenance',label:'Maintenance'},{value:'insurance',label:'Insurance'},{value:'driver_pay',label:'Driver Pay'},{value:'other',label:'Other'}]},
+    {id:'amount',label:'Amount ($)',type:'number'},{id:'date',label:'Date',type:'date'},{id:'notes',label:'Description',span2:true},
+  ], {date:'2026-09-27'}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    DB.expenses.push({id:'ex'+Date.now(), category:g('category'), amount:parseFloat(g('amount'))||0, date:g('date'), loadId:null, notes:g('notes')});
+    saveDB(); renderAccounting(document.getElementById('main'));
+  });
+}
+
+/* ---------- W-2 PAYROLL ---------- */
+function renderW2Payroll(main){
+  const pending = DB.w2Payrolls.filter(p=>p.status==='pending');
+  const approved = DB.w2Payrolls.filter(p=>p.status==='approved');
+  const paid = DB.w2Payrolls.filter(p=>p.status==='paid');
+
+  const pendingGross = pending.reduce((s,p)=>s+p.grossWages,0);
+  const totalNet = DB.w2Payrolls.reduce((s,p)=>s+p.netPay,0);
+
+  const w2Drivers = DB.drivers.filter(d=>d.classification==='w2_employee');
+
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='overview';renderAccounting(document.getElementById('main'))">← Back to Accounting</button><h1>W-2 Payroll Management</h1><div class="desc">Employee payroll, taxes and deductions</div></div>
+  ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ? '<button class="btn" onclick="generatePayrollRun()">+ Generate Payroll Run</button>' : ''}</div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi warn"><div class="lbl">Pending Approval</div><div class="stat-num">${pending.length}</div><div class="sub">${fmtMoney(pendingGross)} gross</div></div>
+    <div class="kpi accent"><div class="lbl">Approved</div><div class="stat-num">${approved.length}</div><div class="sub">Ready to pay</div></div>
+    <div class="kpi good"><div class="lbl">Paid Out</div><div class="stat-num">${paid.length}</div><div class="sub">${fmtMoney(totalNet)} net</div></div>
+    <div class="kpi"><div class="lbl">W-2 Drivers</div><div class="stat-num">${w2Drivers.length}</div><div class="sub">Active employees</div></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>Pending Payrolls</h3>
+    ${pending.length ? `
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Employee</th><th>Period</th><th>Gross</th><th>Taxes</th><th>Deductions</th><th>Net</th><th></th></tr></thead>
+    <tbody>${pending.map(p=>{
+      const drv = DB.drivers.find(d=>d.id===p.driverId);
+      if(!drv) return '<tr><td>Driver not found</td><td colspan="6" style="color:var(--danger);">Invalid driver reference</td></tr>';
+      const totalTaxes = p.federalIncome + p.socialSecurity + p.medicare + p.stateIncome;
+      const deleteBtn = (currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting')) ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;margin-left:4px;" onclick="deletePayroll('${p.id}')">Delete</button>` : '';
+      return `<tr><td><b>${drv.name} (${drv.employeeId})</b></td><td style="font-size:12px;">${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</td><td>${fmtMoney(p.grossWages)}</td><td>${fmtMoney(totalTaxes)}</td><td>${fmtMoney(p.healthInsurance+p.dentalInsurance+p.visionInsurance+p.retirement401k+p.otherDeductions)}</td><td><b>${fmtMoney(p.netPay)}</b></td><td style="font-size:12px;"><button class="btn small secondary" onclick="openW2PayrollDetail('${p.id}')">Review</button>${deleteBtn}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ` : '<div class="empty">No pending payrolls.</div>'}</div>
+
+  <div class="panel">
+    <h3>All Payroll History</h3>
+    ${DB.w2Payrolls.length ? `
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Employee</th><th>Period</th><th>Gross</th><th>Net</th><th>Status</th><th></th></tr></thead>
+    <tbody>${DB.w2Payrolls.map(p=>{
+      const drv = DB.drivers.find(d=>d.id===p.driverId);
+      if(!drv) return '<tr><td>Driver not found</td><td colspan="5" style="color:var(--danger);">Invalid driver reference</td></tr>';
+      const statusColor = p.status==='pending'?'#4A3A1E':p.status==='approved'?'#3D4A6B':'#1B3B27';
+      const deleteBtn = (currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting')) ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;margin-left:4px;" onclick="deletePayroll('${p.id}')">Delete</button>` : '';
+      return `<tr><td>${drv.name} (${drv.employeeId})</td><td style="font-size:12px;">${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</td><td>${fmtMoney(p.grossWages)}</td><td>${fmtMoney(p.netPay)}</td><td><span class="pill" style="background:${statusColor};color:var(--accent2);">${p.status}</span></td><td style="font-size:12px;"><button class="btn small secondary" onclick="openW2PayrollDetail('${p.id}')">View</button>${deleteBtn}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ` : '<div class="empty">No payroll records yet.</div>'}</div>
+  `;
+}
+
+function generatePayrollRun(){
+  const w2Drivers = DB.drivers.filter(d=>d.classification==='w2_employee');
+  if(w2Drivers.length === 0) { alert('No W-2 employees found'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay open';
+  overlay.innerHTML = `
+  <div class="modal modal-wrap" style="max-width:600px;">
+    <button class="close-x" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Generate Payroll Run</h2>
+    <div class="modal-sub">Create payroll records for W-2 employees</div>
+    <div class="form-grid" id="payrollForm">
+      <div class="field"><label>Pay Period Start Date</label><input type="date" id="startDate" required></div>
+      <div class="field"><label>Pay Period End Date</label><input type="date" id="endDate" required></div>
+      <div class="field span2" style="margin-bottom:12px;"><label style="display:flex;align-items:center;gap:10px;"><input type="checkbox" id="selectAll"> <strong>Select All Employees</strong></label></div>
+      <div class="field span2" style="border:1px solid var(--border);border-radius:6px;padding:10px;max-height:200px;overflow-y:auto;margin-bottom:12px;">
+        ${w2Drivers.map(d=>`<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" class="emp-checkbox" value="${d.id}" data-name="${d.name}"> ${d.name} (${d.employeeId})</label>`).join('')}
+      </div>
+      <div class="field span2"><label>Hours for All Employees</label><input type="number" id="hoursInput" placeholder="Hours" min="0" step="0.5" required></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="this.closest('.overlay').remove()">Cancel</button>
+      <button class="btn" onclick="submitPayrollRun()">Create Payroll Run</button>
+    </div>
+  </div>
+  `;
+  document.body.appendChild(overlay);
+
+  setTimeout(()=>{
+    document.getElementById('selectAll').addEventListener('change', function(){
+      document.querySelectorAll('.emp-checkbox').forEach(cb=>cb.checked=this.checked);
+    });
+  }, 0);
+}
+
+function submitPayrollRun(){
+  const startDate = document.getElementById('startDate').value;
+  const endDate = document.getElementById('endDate').value;
+  const hours = parseFloat(document.getElementById('hoursInput').value);
+  const selected = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb=>cb.value);
+
+  if(!startDate || !endDate) { alert('Please enter both dates'); return; }
+  if(selected.length === 0) { alert('Please select at least one employee'); return; }
+  if(isNaN(hours) || hours < 0) { alert('Please enter valid hours'); return; }
+
+  selected.forEach(driverId=>{
+    const driver = DB.drivers.find(d=>d.id===driverId);
+    if(!driver) return;
+
+    const rate = driver.employmentDetails?.hourlyRate || 0;
+    const grossWages = hours * rate;
+    const taxes = grossWages * 0.15; // 15% tax estimate
+    const deductions = driver.employmentDetails?.deductions || 0;
+    const netPay = grossWages - taxes - deductions;
+
+    const newPayroll = {
+      id: 'w2p_'+Date.now()+'_'+Math.random().toString(36).substr(2,9),
+      driverId: driverId,
+      payPeriod: { startDate, endDate },
+      hoursWorked: hours,
+      hourlyRate: rate,
+      grossWages: parseFloat(grossWages.toFixed(2)),
+      taxes: parseFloat(taxes.toFixed(2)),
+      deductions: parseFloat(deductions.toFixed(2)),
+      netPay: parseFloat(netPay.toFixed(2)),
+      status: 'pending',
+      createdBy: currentUser.id,
+      createdAt: new Date().toISOString()
+    };
+
+    DB.w2Payrolls.push(newPayroll);
+  });
+
+  saveDB();
+  document.querySelector('.modal').remove();
+  alert('Payroll run created for '+selected.length+' employee(s)');
+  renderW2Payroll(document.getElementById('main'));
+}
+
+function openW2PayrollDetail(payrollId){
+  const p = DB.w2Payrolls.find(x=>x.id===payrollId);
+  if(!p) { alert('Payroll not found'); return; }
+  const d = DB.drivers.find(x=>x.id===p.driverId);
+  if(!d) { alert('Driver not found for this payroll'); return; }
+  const totalTaxes = p.federalIncome + p.socialSecurity + p.medicare + p.stateIncome;
+  const totalDeduct = p.healthInsurance + p.dentalInsurance + p.visionInsurance + p.retirement401k + p.otherDeductions;
+
+  document.getElementById('main').innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='payroll';renderAccounting(document.getElementById('main'))">← Back to Payroll</button><h1>W-2 Payroll Detail</h1><div class="desc">${d.name} (${d.employeeId}) · ${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</div></div></div>
+
+  <div class="dash-cols">
+    <div class="panel">
+      <h3>Gross Wages</h3>
+      <div class="row-item"><div class="t1">Regular Hours (${p.regularHours}h)</div><div>${fmtMoney(p.regularHours * d.hourlyRate)}</div></div>
+      <div class="row-item"><div class="t1">Overtime Hours (${p.overtimeHours}h)</div><div>${fmtMoney(p.overtimeHours * d.overtimeRate)}</div></div>
+      <div class="row-item"><div class="t1">Mileage Pay</div><div>${fmtMoney(p.milesPay)}</div></div>
+      <div class="row-item"><div class="t1">Percentage Pay</div><div>${fmtMoney(p.percentagePay)}</div></div>
+      <div class="row-item"><div class="t1">Bonuses</div><div>${fmtMoney(p.bonuses)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Reimbursements</div><div>${fmtMoney(p.reimbursements)}</div></div>
+      <div class="row-item" style="font-weight:700;font-size:16px;"><div class="t1">GROSS WAGES</div><div style="color:var(--accent);">${fmtMoney(p.grossWages)}</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>Deductions</h3>
+      <div class="row-item"><div class="t1">Federal Income Tax</div><div>${fmtMoney(p.federalIncome)}</div></div>
+      <div class="row-item"><div class="t1">Social Security (6.2%)</div><div>${fmtMoney(p.socialSecurity)}</div></div>
+      <div class="row-item"><div class="t1">Medicare (1.45%)</div><div>${fmtMoney(p.medicare)}</div></div>
+      <div class="row-item"><div class="t1">State Income Tax</div><div>${fmtMoney(p.stateIncome)}</div></div>
+      <div class="row-item" style="border-bottom:1px solid var(--border);"><div class="t1">Local Taxes</div><div>${fmtMoney(p.localTaxes)}</div></div>
+      <div class="row-item" style="color:var(--dim);font-size:12px;"><div class="t1">Subtotal Taxes</div><div>${fmtMoney(totalTaxes)}</div></div>
+
+      <div class="row-item" style="margin-top:12px;"><div class="t1">Health Insurance</div><div>${fmtMoney(p.healthInsurance)}</div></div>
+      <div class="row-item"><div class="t1">Dental Insurance</div><div>${fmtMoney(p.dentalInsurance)}</div></div>
+      <div class="row-item"><div class="t1">Vision Insurance</div><div>${fmtMoney(p.visionInsurance)}</div></div>
+      <div class="row-item"><div class="t1">401k Contribution</div><div>${fmtMoney(p.retirement401k)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Other Deductions</div><div>${fmtMoney(p.otherDeductions)}</div></div>
+      <div class="row-item" style="font-weight:700;font-size:16px;"><div class="t1">TOTAL DEDUCTIONS</div><div style="color:var(--danger);">${fmtMoney(totalTaxes + totalDeduct)}</div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="text-align:center;padding:24px;margin-top:16px;background:var(--panel2);border-radius:12px;">
+    <div style="font-size:14px;color:var(--dim);margin-bottom:8px;">NET PAY</div>
+    <div style="font-size:40px;font-weight:700;color:var(--accent2);">${fmtMoney(p.netPay)}</div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+      ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ?
+        (p.status === 'pending' ? `
+          <button class="btn" onclick="approveW2Payroll('${p.id}')">✓ Approve</button>
+          <button class="btn secondary" onclick="deletePayroll('${p.id}')">🗑️ Delete</button>
+        ` : p.status === 'approved' ? `
+          <button class="btn" onclick="markW2PayrollPaid('${p.id}')">💰 Mark as Paid</button>
+          <button class="btn secondary" onclick="deletePayroll('${p.id}')">🗑️ Delete</button>
+        ` : `
+          <span class="pill" style="background:#1B3B27;color:#5FE39A;padding:8px 16px;">✓ Paid</span>
+          <button class="btn secondary" onclick="deletePayroll('${p.id}')">🗑️ Delete</button>
+        `)
+        : (p.status === 'paid' ? '<span class="pill" style="background:#1B3B27;color:#5FE39A;padding:8px 16px;">✓ Paid</span>' : '')
+      }
+    </div>
+  </div>
+  `;
+}
+
+function openW2EmployeeModal(id){
+  const e = id ? DB.w2Employees.find(x=>x.id===id) : null;
+  openEntityModal(e?'Edit Employee':'Add W-2 Employee', e?'Update employee compensation and benefits':'Create new W-2 employee record', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'employeeId',label:'Employee ID'},
+    {id:'truckAssigned',label:'Assigned Truck'},
+    {id:'hourlyRate',label:'Hourly Rate ($)',type:'number'},
+    {id:'overtimeRate',label:'Overtime Rate ($)',type:'number'},
+    {id:'milesRate',label:'Miles Rate ($/mi)',type:'number'},
+    {id:'percentageRate',label:'Percentage Rate (%)',type:'number'},
+    {id:'healthInsurance',label:'Health Insurance ($)',type:'number'},
+    {id:'dentalInsurance',label:'Dental Insurance ($)',type:'number'},
+    {id:'visionInsurance',label:'Vision Insurance ($)',type:'number'},
+    {id:'retirement401k',label:'401k Contribution ($)',type:'number'},
+    {id:'state',label:'State'},
+    {id:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'on_leave',label:'On Leave'},{value:'terminated',label:'Terminated'}]},
+  ], e||{status:'active'}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),employeeId:g('employeeId'),truckAssigned:g('truckAssigned'),hourlyRate:parseFloat(g('hourlyRate'))||0,overtimeRate:parseFloat(g('overtimeRate'))||0,milesRate:parseFloat(g('milesRate'))||0,percentageRate:parseFloat(g('percentageRate'))||0,healthInsurance:parseFloat(g('healthInsurance'))||0,dentalInsurance:parseFloat(g('dentalInsurance'))||0,visionInsurance:parseFloat(g('visionInsurance'))||0,retirement401k:parseFloat(g('retirement401k'))||0,state:g('state'),status:g('status')};
+    if(e) Object.assign(e,data); else DB.w2Employees.push({id:'w2_'+Date.now(),...data});
+    saveDB(); window.accountingTab='payroll'; renderAccounting(document.getElementById('main'));
+    alert('✓ Employee '+(e?'updated':'added'));
+  });
+}
+
+function approveW2Payroll(payrollId){
+  const p = DB.w2Payrolls.find(x=>x.id===payrollId);
+  p.status='approved'; p.approvedBy=currentUser.name; p.approvedAt=new Date().toISOString();
+  saveDB(); window.accountingTab='payroll'; renderAccounting(document.getElementById('main'));
+  alert('✓ Payroll approved and ready to pay');
+}
+
+function markW2PayrollPaid(payrollId){
+  const p = DB.w2Payrolls.find(x=>x.id===payrollId);
+  p.status='paid'; p.paidAt=new Date().toISOString();
+  saveDB(); window.accountingTab='payroll'; renderAccounting(document.getElementById('main'));
+  alert('✓ Payroll marked as paid (ACH transfer)');
+}
+
+function deletePayroll(payrollId){
+  if(!confirm('Are you sure you want to delete this payroll? This action cannot be undone.')) return;
+  const idx = DB.w2Payrolls.findIndex(p=>p.id===payrollId);
+  if(idx > -1) {
+    DB.w2Payrolls.splice(idx, 1);
+    saveDB();
+    alert('Payroll deleted successfully');
+    window.accountingTab = 'payroll';
+    renderAccounting(document.getElementById('main'));
+  }
+}
+
+/* ---------- OWNER-OPERATOR SETTLEMENTS ---------- */
+function renderOwnerOpSettlements(main){
+  const pending = DB.ownerOperatorSettlements.filter(s=>s.status==='pending');
+  const approved = DB.ownerOperatorSettlements.filter(s=>s.status==='approved');
+  const paid = DB.ownerOperatorSettlements.filter(s=>s.status==='paid');
+
+  const pendingTotal = pending.reduce((s,x)=>s+x.grossRevenue,0);
+  const paidOut = paid.reduce((s,x)=>s+x.netSettlement,0);
+
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='overview';renderAccounting(document.getElementById('main'))">← Back to Accounting</button><h1>Owner-Operator Settlements</h1><div class="desc">Revenue, deductions and net settlement tracking</div></div>
+  <div style="display:flex;gap:8px;">
+    ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ? '<button class="btn" onclick="generateSettlement()">+ Generate Settlement</button>' : ''}
+    ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ? '<button class="btn secondary" onclick="openOwnerOpModal()">+ Owner-Op</button>' : ''}
+  </div></div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi warn"><div class="lbl">Pending Review</div><div class="stat-num">${pending.length}</div><div class="sub">${fmtMoney(pendingTotal)} revenue</div></div>
+    <div class="kpi accent"><div class="lbl">Approved</div><div class="stat-num">${approved.length}</div><div class="sub">Ready to pay</div></div>
+    <div class="kpi good"><div class="lbl">Paid Out</div><div class="stat-num">${paid.length}</div><div class="sub">${fmtMoney(paidOut)}</div></div>
+    <div class="kpi"><div class="lbl">Operators</div><div class="stat-num">${DB.ownerOperators.length}</div><div class="sub">Active 1099s</div></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>Pending Settlements</h3>
+    ${pending.length ? `
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>O/O Name</th><th>Period</th><th>Loads</th><th>Gross</th><th>Deductions</th><th>Net</th><th></th></tr></thead>
+    <tbody>${pending.map(s=>{
+      const oo = DB.ownerOperators.find(o=>o.id===s.ownerOperatorId);
+      const deleteBtn = (currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting')) ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;margin-left:4px;" onclick="deleteSettlement('${s.id}')">Delete</button>` : '';
+      return `<tr><td><b>${oo.name}</b></td><td style="font-size:12px;">${fmtDateOnly(s.settlementPeriod.startDate)} – ${fmtDateOnly(s.settlementPeriod.endDate)}</td><td>${s.loadIds.length}</td><td>${fmtMoney(s.grossRevenue)}</td><td>${fmtMoney(s.deductions.totalDeductions)}</td><td><b>${fmtMoney(s.netSettlement)}</b></td><td style="font-size:12px;"><button class="btn small secondary" onclick="openOwnerOpSettlementDetail('${s.id}')">Review</button>${deleteBtn}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ` : '<div class="empty">No pending settlements.</div>'}</div>
+
+  <div class="panel">
+    <h3>Settlement History</h3>
+    ${DB.ownerOperatorSettlements.length ? `
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>O/O</th><th>Period</th><th>Loads</th><th>Net</th><th>Status</th><th></th></tr></thead>
+    <tbody>${DB.ownerOperatorSettlements.map(s=>{
+      const oo = DB.ownerOperators.find(o=>o.id===s.ownerOperatorId);
+      const statusColor = s.status==='pending'?'#4A3A1E':s.status==='approved'?'#3D4A6B':'#1B3B27';
+      const deleteBtn = (currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting')) ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;margin-left:4px;" onclick="deleteSettlement('${s.id}')">Delete</button>` : '';
+      return `<tr><td>${oo.name}</td><td style="font-size:12px;">${fmtDateOnly(s.settlementPeriod.startDate)} – ${fmtDateOnly(s.settlementPeriod.endDate)}</td><td>${s.loadIds.length}</td><td>${fmtMoney(s.netSettlement)}</td><td><span class="pill" style="background:${statusColor};color:var(--accent2);">${s.status}</span></td><td style="font-size:12px;"><button class="btn small secondary" onclick="openOwnerOpSettlementDetail('${s.id}')">View</button>${deleteBtn}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ` : '<div class="empty">No settlements yet.</div>'}</div>
+  `;
+}
+
+function openOwnerOpSettlementDetail(settlementId){
+  const s = DB.ownerOperatorSettlements.find(x=>x.id===settlementId);
+  const oo = DB.ownerOperators.find(o=>o.id===s.ownerOperatorId);
+  const loads = s.loadIds.map(id=>DB.loads.find(l=>l.id===id)).filter(Boolean);
+
+  document.getElementById('main').innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='settlements';renderAccounting(document.getElementById('main'))">← Back to Settlements</button><h1>Settlement Statement</h1><div class="desc">${oo.name} (${oo.companyName}) · Truck ${oo.truckNumber}</div></div></div>
+
+  <div class="panel" style="background:var(--panel2);padding:24px;border-radius:12px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div><div style="font-size:12px;color:var(--dim);">Settlement Period</div><div style="font-weight:600;">${fmtDateOnly(s.settlementPeriod.startDate)} – ${fmtDateOnly(s.settlementPeriod.endDate)}</div></div>
+      <div><div style="font-size:12px;color:var(--dim);">Settlement #</div><div style="font-weight:600;">${s.id}</div></div>
+    </div>
+
+    <h3 style="margin:16px 0 12px;">Loads Included</h3>
+    <div style="background:var(--panel);border-radius:8px;padding:12px;">
+      ${loads.map(l=>'<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid var(--border);"><span>'+l.id+' — '+l.pickupLoc+' → '+l.deliveryLoc+'</span><span style="font-weight:600;">'+fmtMoney(l.rate+l.detention+l.layover+l.tonu)+'</span></div>').join('')}
+    </div>
+  </div>
+
+  <div class="dash-cols">
+    <div class="panel">
+      <h3>Credits (Revenue)</h3>
+      <div class="row-item"><div class="t1">Load Revenue</div><div>${fmtMoney(s.creditsBreakdown.loadRevenue)}</div></div>
+      <div class="row-item"><div class="t1">Accessorials</div><div>${fmtMoney(s.creditsBreakdown.accessorials)}</div></div>
+      <div class="row-item"><div class="t1">Bonuses</div><div>${fmtMoney(s.creditsBreakdown.bonuses)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Reimbursements</div><div>${fmtMoney(s.creditsBreakdown.reimbursements)}</div></div>
+      <div class="row-item" style="font-weight:700;color:var(--accent);"><div class="t1">TOTAL CREDITS</div><div>${fmtMoney(s.grossRevenue)}</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>Deductions</h3>
+      <div class="row-item"><div class="t1">Insurance</div><div>${fmtMoney(s.deductions.insurance)}</div></div>
+      <div class="row-item"><div class="t1">Dispatch Fee (${oo.dispatchPercentage}%)</div><div>${fmtMoney(s.deductions.dispatchFee)}</div></div>
+      <div class="row-item"><div class="t1">ELD/Tech Fee</div><div>${fmtMoney(s.deductions.eldFee)}</div></div>
+      <div class="row-item"><div class="t1">Trailer Rental</div><div>${fmtMoney(s.deductions.trailerRental)}</div></div>
+      <div class="row-item"><div class="t1">Maintenance Pool</div><div>${fmtMoney(s.deductions.maintenance)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Fuel Advance</div><div>${fmtMoney(s.deductions.fuelAdvance)}</div></div>
+      <div class="row-item" style="font-weight:700;color:var(--danger);"><div class="t1">TOTAL DEDUCTIONS</div><div>${fmtMoney(s.deductions.totalDeductions)}</div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="background:var(--panel2);padding:24px;border-radius:12px;margin-top:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;text-align:center;">
+      <div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:8px;">Subtotal (After Deductions)</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);">${fmtMoney(s.grossRevenue - s.deductions.totalDeductions)}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:8px;">Ownership Split (${oo.ownerShare}%)</div>
+        <div style="font-size:18px;font-weight:600;color:var(--text);">Driver: ${oo.ownerShare}%</div>
+        <div style="font-size:14px;color:var(--dim);">Company: ${100-oo.ownerShare}%</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:8px;">NET SETTLEMENT</div>
+        <div style="font-size:32px;font-weight:700;color:var(--accent2);">${fmtMoney(s.netSettlement)}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+      ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ?
+        (s.status === 'pending' ? `
+          <button class="btn" onclick="approveOwnerOpSettlement('${s.id}')">✓ Approve</button>
+          <button class="btn secondary" onclick="deleteSettlement('${s.id}')">🗑️ Delete</button>
+        ` : s.status === 'approved' ? `
+          <button class="btn" onclick="markOwnerOpSettlementPaid('${s.id}')">💰 Mark as Paid</button>
+          <button class="btn secondary" onclick="deleteSettlement('${s.id}')">🗑️ Delete</button>
+        ` : `
+          <span class="pill" style="background:#1B3B27;color:#5FE39A;padding:8px 16px;">✓ Paid on ${fmtDateOnly(s.paidAt)}</span>
+          <button class="btn secondary" onclick="deleteSettlement('${s.id}')">🗑️ Delete</button>
+        `)
+        : (s.status === 'paid' ? '<span class="pill" style="background:#1B3B27;color:#5FE39A;padding:8px 16px;">✓ Paid on '+fmtDateOnly(s.paidAt)+'</span>' : '')
+      }
+    </div>
+  </div>
+  `;
+}
+
+function deleteSettlement(settlementId){
+  if(!confirm('Are you sure you want to delete this settlement? This action cannot be undone.')) return;
+  const idx = DB.ownerOperatorSettlements.findIndex(s=>s.id===settlementId);
+  if(idx > -1) {
+    DB.ownerOperatorSettlements.splice(idx, 1);
+    saveDB();
+    alert('Settlement deleted successfully');
+    window.accountingTab = 'settlements';
+    renderAccounting(document.getElementById('main'));
+  }
+}
+
+function generateSettlement(){
+  const ooList = DB.ownerOperators.filter(o=>o.status==='active');
+  if(ooList.length === 0) { alert('No active owner-operators found'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay open';
+  overlay.innerHTML = `
+  <div class="modal modal-wrap" style="max-width:600px;">
+    <button class="close-x" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Generate Settlement</h2>
+    <div class="modal-sub">Settlement auto-populates completed loads from selected period</div>
+    <div class="form-grid">
+      <div class="field"><label>Settlement Period Start Date</label><input type="date" id="settlementStart" required onchange="updateSettlementLoads()"></div>
+      <div class="field"><label>Settlement Period End Date</label><input type="date" id="settlementEnd" required onchange="updateSettlementLoads()"></div>
+      <div class="field span2"><label>Owner-Operator</label><select id="settlementOO" required onchange="updateSettlementLoads()"><option value="">-- Select Owner-Operator --</option>${ooList.map(o=>`<option value="${o.id}">${o.name} (${o.companyName})</option>`).join('')}</select></div>
+      <div class="field span2"><label style="color:var(--dim);">Completed Loads in Period</label><div id="settlementLoadsList" style="border:1px solid var(--border);border-radius:6px;padding:10px;max-height:150px;overflow-y:auto;min-height:50px;"><div style="color:var(--dim);font-size:12px;">Select dates and O/O to see loads</div></div></div>
+      <div class="field span2"><label>Gross Revenue ($) - Auto-calculated</label><input type="number" id="settlementRevenue" readonly style="background:var(--panel2);"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="this.closest('.overlay').remove()">Cancel</button>
+      <button class="btn" onclick="submitSettlement()">Create Settlement</button>
+    </div>
+  </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function updateSettlementLoads(){
+  const startDate = document.getElementById('settlementStart').value;
+  const endDate = document.getElementById('settlementEnd').value;
+  const ooId = document.getElementById('settlementOO').value;
+
+  if(!startDate || !endDate || !ooId) {
+    document.getElementById('settlementLoadsList').innerHTML = '<div style="color:var(--dim);font-size:12px;">Select all fields to see loads</div>';
+    document.getElementById('settlementRevenue').value = '';
+    return;
+  }
+
+  const oo = DB.ownerOperators.find(o=>o.id===ooId);
+  const matchedLoads = DB.loads.filter(l=> l.driverId === oo.driverId && l.status === 'delivered' && new Date(l.deliveryAt) >= new Date(startDate) && new Date(l.deliveryAt) <= new Date(endDate));
+
+  if(matchedLoads.length === 0) {
+    document.getElementById('settlementLoadsList').innerHTML = '<div style="color:var(--dim);font-size:12px;">No completed loads in this period</div>';
+    document.getElementById('settlementRevenue').value = '0.00';
+    return;
+  }
+
+  const totalRevenue = matchedLoads.reduce((sum, l)=> sum + l.rate + l.detention + l.layover + l.tonu, 0);
+  document.getElementById('settlementRevenue').value = totalRevenue.toFixed(2);
+
+  document.getElementById('settlementLoadsList').innerHTML = matchedLoads.map(l=> `<div style="padding:6px;border-bottom:1px solid var(--border);font-size:12px;"><strong>${l.id}</strong> ${l.pickupLoc}→${l.deliveryLoc} <span style="color:var(--accent);">$${(l.rate + l.detention + l.layover + l.tonu).toFixed(2)}</span></div>`).join('');
+
+  document.getElementById('settlementRevenue').dataset.loadIds = JSON.stringify(matchedLoads.map(l=>l.id));
+}
+
+function submitSettlement(){
+  const startDate = document.getElementById('settlementStart').value;
+  const endDate = document.getElementById('settlementEnd').value;
+  const ooId = document.getElementById('settlementOO').value;
+  const revenue = parseFloat(document.getElementById('settlementRevenue').value);
+  const loadIdsJson = document.getElementById('settlementRevenue').dataset.loadIds;
+  const loadIds = loadIdsJson ? JSON.parse(loadIdsJson) : [];
+
+  if(!startDate || !endDate || !ooId || isNaN(revenue)) {
+    alert('Please fill in all fields');
+    return;
+  }
+
+  if(loadIds.length === 0) {
+    alert('No completed loads found in the selected period');
+    return;
+  }
+
+  const oo = DB.ownerOperators.find(o=>o.id===ooId);
+  if(!oo) { alert('Owner-Operator not found'); return; }
+
+  // Calculate deductions based on owner-operator agreement
+  const dispatchFee = revenue * (oo.dispatchPercentage / 100);
+  const totalDeductions = oo.insuranceDeduction + dispatchFee + oo.eldMonthlyFee + oo.trailerRentalMonthly + oo.maintenancePool;
+  const ownerShare = revenue * (oo.ownerShare / 100);
+  const netSettlement = ownerShare - (totalDeductions * (oo.ownerShare / 100));
+
+  const newSettlement = {
+    id: 'settlement_' + Date.now(),
+    ownerOperatorId: ooId,
+    settlementPeriod: { startDate, endDate },
+    loadIds: loadIds,
+    grossRevenue: parseFloat(revenue.toFixed(2)),
+    creditsBreakdown: { loadRevenue: revenue, accessorials: 0, bonuses: 0, reimbursements: 0 },
+    deductions: {
+      insurance: oo.insuranceDeduction,
+      dispatchFee: parseFloat(dispatchFee.toFixed(2)),
+      eldFee: oo.eldMonthlyFee,
+      trailerRental: oo.trailerRentalMonthly,
+      maintenance: oo.maintenancePool,
+      fuelAdvance: 0,
+      otherDeductions: 0,
+      totalDeductions: parseFloat(totalDeductions.toFixed(2))
+    },
+    ownershipSplit: { percentage: oo.ownerShare, ownerShare: parseFloat(ownerShare.toFixed(2)), companyShare: parseFloat((revenue - ownerShare).toFixed(2)) },
+    netSettlement: parseFloat(netSettlement.toFixed(2)),
+    status: 'pending',
+    createdBy: currentUser.id,
+    createdAt: new Date().toISOString()
+  };
+
+  DB.ownerOperatorSettlements.push(newSettlement);
+  saveDB();
+  document.querySelector('.modal').remove();
+  alert('Settlement created successfully');
+  window.accountingTab = 'settlements';
+  renderAccounting(document.getElementById('main'));
+}
+
+function openOwnerOpModal(id){
+  const o = id ? DB.ownerOperators.find(x=>x.id===id) : null;
+  openEntityModal(o?'Edit Owner-Operator':'Add Owner-Operator', o?'Update compensation and fees':'Create new 1099 owner-operator', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'truckNumber',label:'Truck Number'},
+    {id:'ownerShare',label:'Owner Share (%)',type:'number'},
+    {id:'insuranceDeduction',label:'Monthly Insurance ($)',type:'number'},
+    {id:'dispatchPercentage',label:'Dispatch Fee (%)',type:'number'},
+    {id:'eldMonthlyFee',label:'ELD Monthly Fee ($)',type:'number'},
+    {id:'trailerRentalMonthly',label:'Trailer Rental Monthly ($)',type:'number'},
+    {id:'maintenancePool',label:'Maintenance Pool Monthly ($)',type:'number'},
+    {id:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'on_hold',label:'On Hold'},{value:'inactive',label:'Inactive'}]},
+  ], o||{ownerShare:88,status:'active'}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),truckNumber:g('truckNumber'),ownerShare:parseInt(g('ownerShare'))||88,insuranceDeduction:parseFloat(g('insuranceDeduction'))||0,dispatchPercentage:parseFloat(g('dispatchPercentage'))||0,eldMonthlyFee:parseFloat(g('eldMonthlyFee'))||0,trailerRentalMonthly:parseFloat(g('trailerRentalMonthly'))||0,maintenancePool:parseFloat(g('maintenancePool'))||0,status:g('status')};
+    if(o) Object.assign(o,data); else DB.ownerOperators.push({id:'oo_'+Date.now(),...data});
+    saveDB(); window.accountingTab='settlements'; renderAccounting(document.getElementById('main'));
+    alert('✓ Owner-Op '+(o?'updated':'added'));
+  });
+}
+
+function approveOwnerOpSettlement(settlementId){
+  const s = DB.ownerOperatorSettlements.find(x=>x.id===settlementId);
+  s.status='approved'; s.approvedBy=currentUser.name; s.approvedAt=new Date().toISOString();
+  saveDB(); window.accountingTab='settlements'; renderAccounting(document.getElementById('main'));
+  alert('✓ Settlement approved and ready to pay');
+}
+
+function markOwnerOpSettlementPaid(settlementId){
+  const s = DB.ownerOperatorSettlements.find(x=>x.id===settlementId);
+  s.status='paid'; s.paidAt=new Date().toISOString();
+  saveDB(); window.accountingTab='settlements'; renderAccounting(document.getElementById('main'));
+  alert('✓ Settlement marked as paid (ACH transfer)');
+}
+
+/* ---------- EMPLOYEES ---------- */
+/* ---------- DOCUMENTS ---------- */
+function renderDocuments(main){
+  // Categorize document types
+  const docCategories = {
+    POD: { label:'Proof of Delivery', color:'#2E5C3E', icon:'✓' },
+    BOL: { label:'Bill of Lading', color:'#3D4A6B', icon:'📋' },
+    INSURANCE: { label:'Insurance & Compliance', color:'#5C3D2E', icon:'🛡️' }
+  };
+
+  // Function to determine doc category
+  function getDocCategory(type){
+    const t = type.toLowerCase();
+    if(t.includes('pod') || t.includes('proof') || t.includes('delivery') || t.includes('signature')) return 'POD';
+    if(t.includes('bol') || t.includes('bill of lading') || t.includes('shipping')) return 'BOL';
+    if(t.includes('insurance') || t.includes('cdl') || t.includes('medical') || t.includes('registration')) return 'INSURANCE';
+    return 'BOL'; // default
+  }
+
+  const docs = {POD:[], BOL:[], INSURANCE:[]};
+
+  // Collect uploaded documents
+  if(DB.documents){
+    DB.documents.forEach(d=>{
+      const cat = getDocCategory(d.category);
+      docs[cat].push({id:d.id, type:d.type, related:d.related, file:d.content.substring(0,50)+'...', docClass:'Upload', uploadedAt:d.uploadedAt});
+    });
+  }
+
+  // Collect load documents
+  DB.loads.forEach(l=>{
+    Object.entries(l.docs).forEach(([type,file])=>{
+      if(file){
+        const cat = getDocCategory(type);
+        docs[cat].push({type, related:l.id, file, docClass:'Load'});
+      }
+    });
+  });
+
+  // Collect driver documents
+  DB.drivers.forEach(d=>{
+    docs.INSURANCE.push({type:'CDL', related:d.name, file:d.cdl||'On file', docClass:'Driver'});
+    docs.INSURANCE.push({type:'Medical Card', related:d.name, file:'expires '+fmtDateOnly(d.medExp), docClass:'Driver'});
+  });
+
+  // Collect truck documents
+  DB.trucks.forEach(t=>{
+    docs.BOL.push({type:'Registration', related:t.unit, file:'expires '+fmtDateOnly(t.regExp), docClass:'Fleet'});
+    docs.INSURANCE.push({type:'Insurance', related:t.unit, file:'expires '+fmtDateOnly(t.insExp), docClass:'Fleet'});
+  });
+
+  // Build HTML with categorized sections
+  let html = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Document Center</h1><div class="desc">All company documents organized by category</div></div>
+  ${currentUser && currentUser.role === 'owner_admin' ? `<div style="display:flex;gap:8px;"><button class="btn" onclick="openUploadDocModal()">+ Upload Document</button><button class="btn secondary" style="color:var(--danger);" onclick="deleteAllDocuments()">Delete All</button></div>` : ''}</div>`;
+
+  Object.entries(docCategories).forEach(([key, cat])=>{
+    const items = docs[key]||[];
+    html += `
+    <div class="panel">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <span style="font-size:20px;">${cat.icon}</span>
+        <h3 style="margin:0;color:${cat.color};">${cat.label}</h3>
+        <span style="margin-left:auto;background:var(--panel2);padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600;">${items.length} doc(s)</span>
+      </div>
+      ${items.length?
+        `<div class="table-wrap" style="border:none;"><table><thead><tr><th>Document Type</th><th>Related To</th><th style="font-size:12px;color:var(--dim);">Class</th><th>File / Detail</th><th>Uploaded</th>${currentUser && currentUser.role === 'owner_admin' ? '<th></th>' : ''}</tr></thead>
+        <tbody>${items.map(d=>`<tr><td><b>${d.type}</b></td><td>${d.related}</td><td style="font-size:12px;color:var(--dim);">${d.docClass}</td><td class="mono" style="font-size:12px;"><button class="btn small secondary" style="padding:2px 6px;font-size:11px;" onclick="editDocument('${d.id||''}', '${d.type}')">View/Edit</button></td><td style="font-size:12px;color:var(--dim);">${d.uploadedAt ? fmtDateOnly(d.uploadedAt) : '-'}</td>${currentUser && currentUser.role === 'owner_admin' ? `<td style="text-align:center;"><button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteDocument('${d.docClass}','${d.related}','${d.type}','${d.id||''}')">Delete</button></td>` : ''}</tr>`).join('')}</tbody></table></div>`
+        :`<div style="padding:24px;text-align:center;color:var(--dim);background:var(--panel2);border-radius:8px;font-size:14px;">No documents yet</div>`}
+    </div>`;
+  });
+
+  main.innerHTML = html;
+}
+
+function deleteDocument(docClass, related, docType, docId){
+  if(!confirm(`Delete ${docType} for ${related}?\n\nThis action cannot be undone.`)) return;
+
+  if(docId && DB.documents){
+    const idx = DB.documents.findIndex(d=>d.id===docId);
+    if(idx > -1) DB.documents.splice(idx, 1);
+  } else if(docClass === 'Load'){
+    const load = DB.loads.find(l => l.id === related);
+    if(load){
+      const docKey = docType.toLowerCase().replace(/\s+/g, '_');
+      if(docKey === 'rate_confirmation') delete load.docs.ratecon;
+      else if(docKey === 'bol') delete load.docs.bol;
+      else if(docKey === 'pod') delete load.docs.pod;
+    }
+  }
+
+  saveDB();
+  renderDocuments(document.getElementById('main'));
+  alert('✓ Document deleted');
+}
+
+function deleteAllDocuments(){
+  if(!confirm('Delete ALL documents?\n\nThis action cannot be undone!')) return;
+
+  // Clear uploaded documents
+  if(DB.documents) DB.documents = [];
+
+  // Clear load documents
+  DB.loads.forEach(l=>{ l.docs = {bol:null, pod:null}; });
+
+  saveDB();
+  renderDocuments(document.getElementById('main'));
+  alert('✓ All documents deleted');
+}
+
+function openUploadDocModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay open';
+  overlay.innerHTML = `
+  <div class="modal modal-wrap" style="max-width:500px;">
+    <button class="close-x" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Upload Document</h2>
+    <div class="modal-sub">Add a new document to the system</div>
+    <div class="form-grid">
+      <div class="field span2"><label>Document Type</label>
+        <select id="docType" required>
+          <option value="">-- Select Type --</option>
+          <option value="POD">Proof of Delivery (POD)</option>
+          <option value="BOL">Bill of Lading (BOL)</option>
+          <option value="Insurance">Insurance Certificate</option>
+          <option value="CDL">Commercial Driver's License</option>
+          <option value="Medical Card">Medical Card</option>
+          <option value="Registration">Vehicle Registration</option>
+          <option value="Other">Other Document</option>
+        </select>
+      </div>
+      <div class="field span2"><label>Document Title</label><input type="text" id="docTitle" placeholder="e.g., Insurance Certificate 2026" required></div>
+      <div class="field span2"><label>Related To (Description)</label><input type="text" id="docRelated" placeholder="e.g., Driver Name or Load ID" required></div>
+      <div class="field span2"><label>File Content / Notes</label><textarea id="docContent" placeholder="Paste file content, add notes, or describe the document" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:100px;color:var(--text);font-family:monospace;font-size:12px;" required></textarea></div>
+      <div class="field span2"><label>Expiration Date (Optional)</label><input type="date" id="docExpires"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="this.closest('.overlay').remove()">Cancel</button>
+      <button class="btn" onclick="submitUploadDocument()">Upload Document</button>
+    </div>
+  </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function submitUploadDocument(){
+  const docType = document.getElementById('docType').value;
+  const docTitle = document.getElementById('docTitle').value;
+  const docRelated = document.getElementById('docRelated').value;
+  const docContent = document.getElementById('docContent').value;
+  const docExpires = document.getElementById('docExpires').value;
+
+  if(!docType || !docTitle || !docRelated || !docContent){
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  if(!DB.documents) DB.documents = [];
+
+  const newDoc = {
+    id: 'doc_' + Date.now(),
+    type: docTitle,
+    category: docType,
+    related: docRelated,
+    content: docContent,
+    expiresAt: docExpires || null,
+    uploadedAt: new Date().toISOString(),
+    uploadedBy: currentUser ? currentUser.name : 'System'
+  };
+
+  DB.documents.push(newDoc);
+  saveDB();
+  document.querySelector('.overlay').remove();
+  alert('✓ Document uploaded successfully');
+  renderDocuments(document.getElementById('main'));
+}
+
+function editDocument(docId, docType){
+  if(!docId){ alert('Cannot edit system documents. Upload a new version instead.'); return; }
+
+  const doc = DB.documents.find(d=>d.id===docId);
+  if(!doc){ alert('Document not found'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay open';
+  overlay.innerHTML = `
+  <div class="modal modal-wrap" style="max-width:500px;">
+    <button class="close-x" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Edit Document</h2>
+    <div class="form-grid">
+      <div class="field span2"><label>Document Title</label><input type="text" id="editDocTitle" value="${doc.type}" required></div>
+      <div class="field span2"><label>Related To</label><input type="text" id="editDocRelated" value="${doc.related}" required></div>
+      <div class="field span2"><label>Content / Notes</label><textarea id="editDocContent" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:100px;color:var(--text);font-family:monospace;font-size:12px;" required>${doc.content}</textarea></div>
+      <div class="field span2"><label>Expiration Date</label><input type="date" id="editDocExpires" value="${doc.expiresAt || ''}" required></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="this.closest('.overlay').remove()">Cancel</button>
+      <button class="btn" onclick="submitEditDocument('${docId}')">Save Changes</button>
+    </div>
+  </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function submitEditDocument(docId){
+  const doc = DB.documents.find(d=>d.id===docId);
+  if(!doc) return;
+
+  doc.type = document.getElementById('editDocTitle').value;
+  doc.related = document.getElementById('editDocRelated').value;
+  doc.content = document.getElementById('editDocContent').value;
+  doc.expiresAt = document.getElementById('editDocExpires').value || null;
+  doc.modifiedAt = new Date().toISOString();
+  doc.modifiedBy = currentUser ? currentUser.name : 'System';
+
+  saveDB();
+  document.querySelector('.overlay').remove();
+  alert('✓ Document updated successfully');
+  renderDocuments(document.getElementById('main'));
+}
+
+/* ---------- USER MANAGEMENT ---------- */
+function renderUsers(main){
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>User Management</h1><div class="desc">Create accounts, manage roles and permissions</div></div>
+  <button class="btn" onclick="openCreateUserModal()">+ New User</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
+  <tbody>${DB.users.map(u=>`<tr><td>${u.name}</td><td>${u.email}</td><td><span class="pill" style="background:var(--panel2);color:var(--text)">${u.role.replace('_',' / ')}</span></td>
+    <td>${u.active?'<span class="pill" style="background:#173A24;color:#5FE39A">Active</span>':'<span class="pill" style="background:#3B1E1E;color:#E5555C">Inactive</span>'}</td><td>${u.createdAt ? fmtDateOnly(u.createdAt) : 'System'}</td>
+    <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openEditUserModal('${u.id}')">Edit</button>${currentUser && currentUser.role === 'owner_admin' && u.id !== currentUser.id ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteUser('${u.id}')">Delete</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function openCreateUserModal(){
+  openEntityModal('Create New User Account', 'Add a team member with role-based access', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'email',label:'Email Address',span2:true},
+    {id:'password',label:'Password (min 8 characters)',type:'password',span2:true},
+    {id:'confirmPassword',label:'Confirm Password',type:'password',span2:true},
+    {id:'role',label:'Role',type:'select',options:[
+      {value:'owner_admin',label:'Owner / Admin — Full access'},
+      {value:'dispatcher',label:'Dispatcher — Manage loads & assignments'},
+      {value:'accounting',label:'Accounting — Revenue & invoices'},
+      {value:'safety',label:'Safety — Compliance & alerts'},
+      {value:'driver',label:'Driver — Driver portal access'},
+      {value:'customer',label:'Customer — Customer portal access'},
+    ]},
+  ], {}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const email = g('email').toLowerCase();
+    const password = g('password');
+    const confirmPassword = g('confirmPassword');
+
+    if(!g('name') || !email || !password) { alert('All fields required'); return; }
+    if(password.length < 8) { alert('Password must be at least 8 characters'); return; }
+    if(password !== confirmPassword) { alert('Passwords do not match'); return; }
+    if(DB.users.find(u=>u.email===email)) { alert('Email already exists'); return; }
+
+    const now = new Date().toISOString();
+    DB.users.push({
+      id:'u'+Date.now(),
+      email,
+      name:g('name'),
+      password,
+      role:g('role'),
+      active:true,
+      createdAt:now,
+    });
+    saveDB();
+    renderUsers(document.getElementById('main'));
+    alert(`✅ User Created!\n\nEmail: ${email}\nPassword: (the one you just set)\n\nShare these credentials securely with the user.`);
+  });
+}
+function openEditUserModal(id){
+  const u = DB.users.find(x=>x.id===id);
+  if(!u) return;
+  openEntityModal(`Edit User — ${u.name}`, '', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'role',label:'Role',type:'select',options:[
+      {value:'owner_admin',label:'Owner / Admin'},
+      {value:'dispatcher',label:'Dispatcher'},
+      {value:'accounting',label:'Accounting'},
+      {value:'safety',label:'Safety'},
+      {value:'driver',label:'Driver'},
+      {value:'customer',label:'Customer'},
+    ]},
+    {id:'active',label:'Status',type:'select',options:[{value:true,label:'Active'},{value:false,label:'Inactive'}]},
+  ], {name:u.name, role:u.role, active:u.active}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    u.name = g('name');
+    u.role = g('role');
+    u.active = g('active')==='true' || g('active')===true;
+    saveDB();
+    renderUsers(document.getElementById('main'));
+  });
+}
+
+function deleteUser(userId){
+  const u = DB.users.find(x=>x.id===userId);
+  if(!u) return;
+  if(!confirm(`Delete user: ${u.name} (${u.email})?\n\nThis action cannot be undone.`)) return;
+
+  const idx = DB.users.findIndex(x=>x.id===userId);
+  if(idx > -1){
+    DB.users.splice(idx, 1);
+    saveDB();
+    alert(`✓ User "${u.name}" deleted successfully`);
+    renderUsers(document.getElementById('main'));
+  }
+}
+
+renderLogin();
+</script>
+</body>
+</html>
 
