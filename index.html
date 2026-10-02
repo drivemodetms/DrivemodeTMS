@@ -30,12 +30,6 @@ h1,h2,h3,.logo,.stat-num{font-family:'Big Shoulders Display',system-ui,sans-seri
 .login-logo .mark{width:14px;height:34px;background:var(--accent);border-radius:3px; transform:skewX(-12deg);}
 .login-logo span{font-size:30px; font-weight:800; letter-spacing:0.5px;}
 .login-sub{color:var(--dim); font-size:14px; margin-bottom:28px;}
-.role-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-.role-btn{background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:var(--radius);
-  padding:16px 14px; text-align:left; cursor:pointer; transition:.15s border-color,.15s background;}
-.role-btn:hover{border-color:var(--accent); background:#20304285;}
-.role-btn b{display:block; font-size:14px; margin-bottom:3px;}
-.role-btn span{font-size:12px; color:var(--dim);}
 .login-foot{margin-top:26px; font-size:12px; color:var(--dim); line-height:1.6;}
 
 /* ---------- APP SHELL ---------- */
@@ -170,10 +164,6 @@ tbody tr:hover{background:var(--panel2); cursor:pointer;}
     <div class="field" style="margin-bottom:6px;"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')attemptLogin()"></div>
     <div id="loginError" style="color:var(--danger);font-size:12.5px;min-height:16px;margin:2px 0 12px;"></div>
     <button class="btn" style="width:100%;" onclick="attemptLogin()">Sign In</button>
-
-    <div class="login-foot" style="margin-top:24px;margin-bottom:10px;">Demo accounts — click one to autofill, then Sign In:</div>
-    <div class="role-grid" id="demoAccounts"></div>
-    <div class="login-foot">Prototype build — credentials are checked against a local demo user list in this browser. Production uses hashed passwords, MFA and a real auth provider (see the users table in the schema).</div>
   </div>
 </div>
 
@@ -221,18 +211,6 @@ tbody tr:hover{background:var(--panel2); cursor:pointer;}
   </div>
 </div>
 
-<!-- ================= PAY STUB MODAL ================= -->
-<div class="overlay" id="stubOverlay">
-  <div class="modal modal-wrap" style="max-width:560px;">
-    <button class="close-x" onclick="closeStub()">✕</button>
-    <div id="stubBody"></div>
-    <div class="modal-actions">
-      <button class="btn secondary" onclick="closeStub()">Close</button>
-      <button class="btn" onclick="window.print()">Print</button>
-    </div>
-  </div>
-</div>
-
 <script>
 /* ============================================================
    DRIVE MODE TMS — PROTOTYPE
@@ -249,23 +227,16 @@ const ROLES = [
   {id:'driver', label:'Driver', desc:'Driver portal preview'},
   {id:'customer', label:'Customer', desc:'Customer portal preview'},
 ];
-const DEMO_USERS = [
-  {id:'u1', name:'Dana Whitfield', email:'admin@drivemodetms.com', password:'Admin123!', role:'owner_admin'},
-  {id:'u2', name:'Priya Nandan', email:'dispatch@drivemodetms.com', password:'Dispatch123!', role:'dispatcher'},
-  {id:'u3', name:'Carlos Medina', email:'accounting@drivemodetms.com', password:'Accounting123!', role:'accounting'},
-  {id:'u4', name:'Renee Falk', email:'safety@drivemodetms.com', password:'Safety123!', role:'safety'},
-  {id:'u5', name:'Marcus Reyes', email:'mreyes@drivemodetms.com', password:'Driver123!', role:'driver'},
-  {id:'u6', name:'Lena Park', email:'lena@coastalfoods.com', password:'Customer123!', role:'customer'},
-];
+const DEMO_USERS = [];
 
 function seedData(){
   const today = new Date('2026-09-27T08:00:00');
   const d = (offset,h=8) => { const t=new Date(today); t.setDate(t.getDate()+offset); t.setHours(h,0,0,0); return t.toISOString(); };
   return {
     drivers:[
-      {id:'drv1', name:'Marcus Reyes', phone:'(614) 555-0142', email:'mreyes@drivemode.com', cdl:'OH-88213410', cdlExp:'2026-11-02', medExp:'2026-10-15', mvr:'Clean — pulled 2026-06-01', status:'active', truckId:'trk1', payType:'per_mile', payRate:0.55, classification:'w2_employee'},
-      {id:'drv2', name:'Angela Cho', phone:'(614) 555-0199', email:'acho@drivemode.com', cdl:'OH-77120044', cdlExp:'2027-04-18', medExp:'2027-01-09', mvr:'Clean — pulled 2026-05-14', status:'active', truckId:'trk2', payType:'percentage', payRate:28, classification:'w2_employee'},
-      {id:'drv3', name:'Derrick Owens', phone:'(614) 555-0177', email:'downens@drivemode.com', cdl:'IN-55009812', cdlExp:'2026-10-05', medExp:'2026-09-30', mvr:'1 violation — review', status:'active', truckId:'trk3', payType:'per_mile', payRate:0.58, classification:'owner_operator_1099'},
+      {id:'drv1', name:'Marcus Reyes', phone:'(614) 555-0142', email:'mreyes@drivemode.com', cdl:'OH-88213410', cdlExp:'2026-11-02', medExp:'2026-10-15', mvr:'Clean — pulled 2026-06-01', status:'active', truckId:'trk1', payType:'per_mile', payRate:0.55, classification:'w2_employee', employeeId:'DML01', hourlyRate:22.50, overtimeRate:33.75, milesRate:0.45, percentageRate:0.08, w4Filing:'single', federalWithholding:2, state:'OH', healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:100, hireDate:'2023-01-15'},
+      {id:'drv2', name:'Angela Cho', phone:'(614) 555-0199', email:'acho@drivemode.com', cdl:'OH-77120044', cdlExp:'2027-04-18', medExp:'2027-01-09', mvr:'Clean — pulled 2026-05-14', status:'active', truckId:'trk2', payType:'percentage', payRate:28, classification:'w2_employee', employeeId:'DML02', hourlyRate:20.00, overtimeRate:30.00, milesRate:0.40, percentageRate:0.08, w4Filing:'married', federalWithholding:3, state:'OH', healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:150, hireDate:'2023-06-01'},
+      {id:'drv3', name:'Derrick Owens', phone:'(614) 555-0177', email:'downens@drivemode.com', cdl:'IN-55009812', cdlExp:'2026-10-05', medExp:'2026-09-30', mvr:'1 violation — review', status:'active', truckId:'trk3', payType:'per_mile', payRate:0.58, classification:'owner_operator_1099', ownerOperatorId:'oo_001'},
     ],
     trucks:[
       {id:'trk1', unit:'T-104', vin:'1FUJA6CV05LM12345', plate:'OH-TR4021', mileage:312840, insExp:'2027-02-01', regExp:'2027-01-15', nextInspection:'2026-11-20'},
@@ -320,17 +291,24 @@ function seedData(){
       {id:'ex4', category:'driver_pay', amount:3200, loadId:null, date:'2026-09-22', notes:'Weekly driver settlements'},
       {id:'ex5', category:'other', amount:140, loadId:null, date:'2026-09-24', notes:'ELD subscription'},
     ],
-    settlements:[
-      {id:'st1', driverId:'drv3', loadIds:['L-1003'], periodStart:'2026-09-15', periodEnd:'2026-09-21', gross:116, taxWithholding:0, deductions:0, net:116, status:'paid', createdAt:'2026-09-22T09:00:00.000Z', paidAt:'2026-09-22T09:00:00.000Z'},
-      {id:'st2', driverId:'drv1', loadIds:['L-1001'], periodStart:'2026-09-22', periodEnd:'2026-09-28', gross:2150, taxWithholding:258, deductions:0, net:1892, status:'pending', createdAt:'2026-09-28T14:00:00.000Z', paidAt:null},
+    w2Employees:[],
+    w2Payrolls:[
+      {id:'pay_001', driverId:'drv1', payPeriod:{startDate:'2026-09-01', endDate:'2026-09-15', payDate:'2026-09-20'}, regularHours:80, overtimeHours:8, milesPay:2250, percentagePay:1500, bonuses:0, reimbursements:0, grossWages:5520, federalIncome:580.50, socialSecurity:342.24, medicare:80.04, stateIncome:200, localTaxes:0, healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:100, otherDeductions:0, totalDeductions:1602.78, netPay:3917.22, employerSSA:342.24, employerMedicare:80.04, status:'paid', approvedBy:'admin', approvedAt:'2026-09-19', paidAt:'2026-09-20'},
+    ],
+    ownerOperators:[
+      {id:'oo_001', name:'John Smith', driverId:'drv3', companyName:'Smith Trucking LLC', truckNumber:'T-156', status:'active', agreementType:'percentage_split', ownerShare:88, insuranceDeduction:350, dispatchPercentage:5, eldMonthlyFee:50, trailerRentalMonthly:200, maintenancePool:100, taxId:'XX-1234567', w9OnFile:true},
+      {id:'oo_002', name:'Maria Garcia', driverId:'drv4', companyName:'Garcia Logistics', truckNumber:'T-201', status:'active', agreementType:'percentage_split', ownerShare:90, insuranceDeduction:300, dispatchPercentage:4, eldMonthlyFee:50, trailerRentalMonthly:200, maintenancePool:100, taxId:'YY-9876543', w9OnFile:true},
+    ],
+    ownerOperatorSettlements:[
+      {id:'settlement_001', ownerOperatorId:'oo_001', settlementPeriod:{startDate:'2026-09-01', endDate:'2026-09-30'}, loadIds:['L-1001','L-1002','L-1003'], grossRevenue:5550, creditsBreakdown:{loadRevenue:5000, accessorials:350, bonuses:0, reimbursements:200}, deductions:{insurance:350, dispatchFee:277.50, eldFee:50, trailerRental:200, maintenance:100, fuelAdvance:0, otherDeductions:0, totalDeductions:977.50}, ownershipSplit:{percentage:88, ownerShare:4023.80, companyShare:548.70}, netSettlement:4023.80, status:'paid', approvedBy:'admin', approvedAt:'2026-09-30', paidAt:'2026-10-01'},
     ],
     users:[
-      {id:'u1', email:'admin@drivemodetms.com', name:'Dana Whitfield', password:'Admin123!', role:'owner_admin', active:true},
-      {id:'u2', email:'dispatch@drivemodetms.com', name:'Priya Nandan', password:'Dispatch123!', role:'dispatcher', active:true},
-      {id:'u3', email:'accounting@drivemodetms.com', name:'Carlos Medina', password:'Accounting123!', role:'accounting', active:true},
-      {id:'u4', email:'safety@drivemodetms.com', name:'Renee Falk', password:'Safety123!', role:'safety', active:true},
-      {id:'u5', email:'mreyes@drivemodetms.com', name:'Marcus Reyes', password:'Driver123!', role:'driver', active:true},
-      {id:'u6', email:'lena@coastalfoods.com', name:'Lena Park', password:'Customer123!', role:'customer', active:true},
+      {id:'u1', email:'admin@drivemodetms.com', name:'Admin', password:'Admin123!', role:'owner_admin', active:true},
+      {id:'u2', email:'dispatcher@drivemodetms.com', name:'John Dispatcher', password:'Dispatcher123!', role:'dispatcher', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+      {id:'u3', email:'accounting@drivemodetms.com', name:'Sarah Accounting', password:'Accounting123!', role:'accounting', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+      {id:'u4', email:'safety@drivemodetms.com', name:'Mike Safety', password:'Safety123!', role:'safety', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+      {id:'u5', email:'driver@drivemodetms.com', name:'Marcus Reyes', password:'Driver123!', role:'driver', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
+      {id:'u6', email:'customer@drivemodetms.com', name:'Lisa Customer', password:'Customer123!', role:'customer', active:true, createdAt:'2026-09-27T08:00:00.000Z'},
     ],
   };
 }
@@ -364,15 +342,19 @@ let editingLoadId = null;
 
 /* ---------- LOGIN ---------- */
 function renderLogin(){
-  document.getElementById('demoAccounts').innerHTML = DEMO_USERS.map(u=>{
-    const rmeta = ROLES.find(r=>r.id===u.role);
-    return `<button class="role-btn" onclick="fillLogin('${u.email}','${u.password}')"><b>${rmeta.label}</b><span>${u.email}</span></button>`;
-  }).join('');
+  document.getElementById('login').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
 }
 function fillLogin(email, password){
   document.getElementById('loginEmail').value = email;
   document.getElementById('loginPassword').value = password;
   document.getElementById('loginError').textContent = '';
+}
+function clearAllData(){
+  if(confirm('This will delete all data and reset to fresh demo data. Continue?')){
+    localStorage.removeItem('dmtms_data_v1');
+    location.reload();
+  }
 }
 function attemptLogin(){
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
@@ -380,11 +362,8 @@ function attemptLogin(){
   const errEl = document.getElementById('loginError');
   if(!email || !password){ errEl.textContent = 'Enter your email and password.'; return; }
 
-  // Check against both demo users (for initial testing) and created users (from DB)
-  let user = DEMO_USERS.find(u=>u.email.toLowerCase()===email && u.password===password);
-  if(!user) {
-    user = DB.users.find(u=>u.email.toLowerCase()===email && u.password===password && u.active);
-  }
+  // Check against DB users only
+  const user = DB.users.find(u=>u.email.toLowerCase()===email && u.password===password && u.active);
 
   if(!user){ errEl.textContent = 'Incorrect email or password.'; return; }
   errEl.textContent = '';
@@ -410,11 +389,11 @@ function logout(){
 
 /* ---------- NAV ---------- */
 const NAV_BY_ROLE = {
-  owner_admin:[['dashboard','Dashboard'],['dispatch','Dispatch'],['loadboard','Load Board'],['users','Users'],['fleet','Fleet'], ['drivers','Drivers'],['customers','Customers'],['accounting','Accounting'],['payroll','Payroll'],['factoring','Factoring'],['documents','Documents']],
-  dispatcher:[['dashboard','Dashboard'],['dispatch','Dispatch'],['loadboard','Load Board'],['fleet','Fleet'],['drivers','Drivers']],
-  accounting:[['dashboard','Dashboard'],['accounting','Accounting'],['payroll','Payroll'],['factoring','Factoring'],['customers','Customers']],
+  owner_admin:[['dashboard','Dashboard'],['dispatch','Dispatch'],['loadboard','Load Board'],['users','Users'],['fleet','Fleet'], ['drivers','Drivers'],['customers','Customers'],['accounting','Accounting'],['factoring','Factoring'],['documents','Documents']],
+  dispatcher:[['dashboard','Dashboard'],['dispatch','Dispatch'],['loadboard','Load Board'],['fleet','Fleet'],['drivers','Drivers'],['documents','Documents']],
+  accounting:[['dashboard','Dashboard'],['accounting','Accounting'],['factoring','Factoring'],['drivers','Drivers'],['customers','Customers'],['documents','Documents']],
   safety:[['dashboard','Dashboard'],['drivers','Drivers'],['fleet','Fleet']],
-  driver:[['myloads','My Loads'],['history','Completed Loads'],['mypayroll','My Payroll']],
+  driver:[['myloads','My Loads'],['history','Completed Loads']],
   customer:[['customerloads','My Shipments'],['invoices','Invoices']],
 };
 const LOCKED_LABEL = {fleet:'Fleet Management', drivers:'Driver Management', customers:'Customer Management', accounting:'Accounting', documents:'Document Center'};
@@ -435,7 +414,7 @@ function navigate(key){
   if(key==='dispatch') return renderDispatch(main);
   if(key==='myloads') return renderDriverLoads(main,false);
   if(key==='history') return renderDriverLoads(main,true);
-  if(key==='mypayroll') return renderDriverPayroll(main);
+  if(key==='mypaystubs') return renderDriverPaystubs(main);
   if(key==='customerloads') return renderCustomerLoads(main);
   if(key==='invoices') return renderCustomerInvoices(main);
   if(key==='loadboard') return renderLoadBoard(main);
@@ -445,7 +424,6 @@ function navigate(key){
   if(key==='drivers') return renderDrivers(main);
   if(key==='customers') return renderCustomersPage(main);
   if(key==='accounting') return renderAccounting(main);
-  if(key==='payroll') return renderPayroll(main);
   if(key==='documents') return renderDocuments(main);
   // stubbed modules for phase 2
   main.innerHTML = `<div class="topbar"><div><h1>${LOCKED_LABEL[key]||key}</h1><div class="desc">Module planned for the next build phase</div></div></div>
@@ -550,7 +528,7 @@ function renderDispatchTable(){
     return hay.includes(q);
   }).sort((a,b)=> new Date(a.pickupAt)-new Date(b.pickupAt));
   document.getElementById('loadsBody').innerHTML = rows.map(l=>`
-    <tr onclick="openModal('${l.id}')">
+    <tr onclick="openModal('${l.id}')" style="cursor:pointer;">
       <td class="mono">${l.id}</td>
       <td>${l.pickupLoc} → ${l.deliveryLoc}<div class="mono">${l.miles} mi</div></td>
       <td>${fmtDate(l.pickupAt)}</td>
@@ -559,7 +537,7 @@ function renderDispatchTable(){
       <td>${l.equipment.replace('_',' ')}</td>
       <td>${driverName(l.driverId)}</td>
       <td>${fmtMoney(l.rate)}</td>
-      <td><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></td>
+      <td style="display:flex;gap:6px;align-items:center;"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span>${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher') ? '<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="event.stopPropagation(); deleteLoad(\''+l.id+'\')">Delete</button>' : ''}</td>
     </tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--dim);padding:26px;">No loads match this filter.</td></tr>`;
 }
 
@@ -574,7 +552,15 @@ function openModal(loadId){
   const brokerOpts = '<option value="">— None (direct) —</option>' + DB.customers.filter(c=>c.type!=='shipper').map(c=>`<option value="${c.id}" ${l&&l.brokerId===c.id?'selected':''}>${c.name}</option>`).join('');
   const truckOpts = '<option value="">Unassigned</option>' + DB.trucks.map(t=>`<option value="${t.id}" ${l&&l.truckId===t.id?'selected':''}>${t.unit}</option>`).join('');
   const trailerOpts = '<option value="">Unassigned</option>' + DB.trailers.map(t=>`<option value="${t.id}" ${l&&l.trailerId===t.id?'selected':''}>${t.unit} (${t.type})</option>`).join('');
-  const driverOpts = '<option value="">Unassigned</option>' + DB.drivers.map(d=>`<option value="${d.id}" ${l&&l.driverId===d.id?'selected':''}>${d.name}</option>`).join('');
+  const driverOpts = '<option value="">Unassigned</option>' + DB.drivers.map(d=>{
+    let rateInfo = '';
+    if(d.classification==='w2_employee'){
+      if(d.payType==='per_mile') rateInfo = ` ($${d.payRate}/mi)`;
+      else if(d.payType==='per_hour') rateInfo = ` ($${d.payRate}/hr)`;
+      else if(d.payType==='percentage') rateInfo = ` (${d.payRate}%)`;
+    }
+    return `<option value="${d.id}" ${l&&l.driverId===d.id?'selected':''}>${d.name}${d.employeeId ? ' ('+d.employeeId+')' : ''}${rateInfo}</option>`;
+  }).join('');
   const equipOpts = ['dry_van','reefer','flatbed','step_deck','power_only','box_truck','other'].map(e=>`<option value="${e}" ${l&&l.equipment===e?'selected':''}>${e.replace('_',' ')}</option>`).join('');
   const statusOpts = STATUSES.map(s=>`<option value="${s}" ${l&&l.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('');
 
@@ -597,24 +583,28 @@ function openModal(loadId){
 
     <div class="section-divider">Rate &amp; Equipment</div>
     <div class="field"><label>Rate ($)</label><input type="number" id="f_rate" value="${l?l.rate:''}" placeholder="0.00"></div>
-    <div class="field"><label>Miles</label><input type="number" id="f_miles" value="${l?l.miles:''}" placeholder="0"></div>
+    <div class="field"><label>Miles</label><input type="number" id="f_miles" value="${l?l.miles:''}" placeholder="0" onchange="calcMiles()"></div>
+    <div class="field"><label>Hours Worked</label><input type="number" id="f_hours" value="${l?l.hours:''}" placeholder="0" step="0.5" min="0"></div>
     <div class="field"><label>Equipment Type</label><select id="f_equipment">${equipOpts}</select></div>
     <div class="field"><label>Load Status</label><select id="f_status">${statusOpts}</select></div>
 
     <div class="section-divider">Assignment</div>
     <div class="field"><label>Assigned Truck</label><select id="f_truckId">${truckOpts}</select></div>
     <div class="field"><label>Assigned Trailer</label><select id="f_trailerId">${trailerOpts}</select></div>
-    <div class="field span2"><label>Assigned Driver</label><select id="f_driverId">${driverOpts}</select></div>
+    <div class="field span2"><label>Assigned Driver</label><select id="f_driverId" onchange="updateDriverPaymentInfo()">${driverOpts}</select></div>
+    <div id="driverPaymentInfo" style="padding:12px;background:var(--panel2);border-radius:8px;margin-top:8px;font-size:13px;display:none;"></div>
 
     <div class="section-divider">Accessorials</div>
     <div class="field"><label>Detention ($)</label><input type="number" id="f_detention" value="${l?l.detention:0}"></div>
     <div class="field"><label>Layover ($)</label><input type="number" id="f_layover" value="${l?l.layover:0}"></div>
     <div class="field"><label>TONU ($)</label><input type="number" id="f_tonu" value="${l?l.tonu:0}"></div>
 
+    ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher' || currentUser.role === 'accounting') ? `
     <div class="section-divider">Documents</div>
-    <div class="field"><label>Rate Confirmation</label><div class="file-row"><input type="file" id="f_doc_ratecon">${l&&l.docs.ratecon?`<span class="file-chip">${l.docs.ratecon}</span>`:''}</div></div>
-    <div class="field"><label>BOL</label><div class="file-row"><input type="file" id="f_doc_bol">${l&&l.docs.bol?`<span class="file-chip">${l.docs.bol}</span>`:''}</div></div>
-    <div class="field"><label>POD</label><div class="file-row"><input type="file" id="f_doc_pod">${l&&l.docs.pod?`<span class="file-chip">${l.docs.pod}</span>`:''}</div></div>
+    <div class="field"><label>Rate Confirmation</label><div class="file-row"><input type="file" id="f_doc_ratecon" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.ratecon?'<span class="file-chip">'+l.docs.ratecon+'</span>':''}</div></div>
+    <div class="field"><label>BOL</label><div class="file-row"><input type="file" id="f_doc_bol" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.bol?'<span class="file-chip">'+l.docs.bol+'</span>':''}</div></div>
+    <div class="field"><label>POD</label><div class="file-row"><input type="file" id="f_doc_pod" ${currentUser.role !== 'owner_admin' ? 'disabled' : ''}>${l&&l.docs.pod?'<span class="file-chip">'+l.docs.pod+'</span>':''}</div></div>
+    ` : ''}
 
     <div class="section-divider">Notes</div>
     <div class="field span2"><textarea id="f_notes" placeholder="Dispatch notes...">${l?l.notes:''}</textarea></div>
@@ -665,6 +655,7 @@ function saveLoad(){
     brokerId: g('f_brokerId').value || null,
     rate: parseFloat(g('f_rate').value)||0,
     miles: parseInt(g('f_miles').value)||0,
+    hours: parseFloat(g('f_hours').value)||0,
     equipment: g('f_equipment').value,
     status: g('f_status').value,
     truckId: g('f_truckId').value || null,
@@ -692,13 +683,24 @@ function saveLoad(){
   renderDispatch(document.getElementById('main'));
 }
 
+function deleteLoad(loadId){
+  const l = DB.loads.find(x=>x.id===loadId);
+  if(!l) return;
+  if(confirm(`Delete load ${l.id}?\n\nRoute: ${l.pickupLoc} → ${l.deliveryLoc}\nRate: ${fmtMoney(l.rate)}\n\nThis action cannot be undone.`)){
+    DB.loads = DB.loads.filter(x=>x.id!==loadId);
+    saveDB();
+    renderDispatch(document.getElementById('main'));
+    alert(`✓ Load ${l.id} deleted.`);
+  }
+}
+
 /* ---------- DRIVER PORTAL ---------- */
 function renderDriverLoads(main, completedOnly){
   const myId = 'drv1'; // demo driver: Marcus Reyes
   const driver = DB.drivers.find(d=>d.id===myId);
   const mine = DB.loads.filter(l=> l.driverId===myId && (completedOnly ? ['delivered','documents_pending','invoiced','paid'].includes(l.status) : !['delivered','documents_pending','invoiced','paid','cancelled'].includes(l.status)));
 
-  main.innerHTML = `<div class="topbar"><div><h1>${completedOnly?'Completed Loads':'My Loads'}</h1><div class="desc">Marcus Reyes — Driver Portal</div></div></div>
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>${completedOnly?'Completed Loads':'My Loads'}</h1><div class="desc">Marcus Reyes — Driver Portal</div></div></div>
   <div class="card-list">${mine.length? mine.map(l=>`
     <div class="load-card">
       <div class="lc-top"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span><span class="mono">${l.id}</span></div>
@@ -711,6 +713,34 @@ function renderDriverLoads(main, completedOnly){
         <div style="font-size:12px;color:var(--dim);margin-bottom:6px;">Load Rate</div>
         <div style="font-weight:700;font-size:18px;color:var(--accent);">${fmtMoney(l.rate)}</div>
       </div>
+
+      ${l.status === 'delivered' ? `<div style="margin-top:12px;padding:12px;background:#1B3B27;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--dim);margin-bottom:6px;">Your Payment</div>
+        <div style="font-weight:700;font-size:18px;color:#4CAF50;">${(() => {
+          const driver = DB.drivers.find(d=>d.id===l.driverId);
+          if(!driver) return fmtMoney(0);
+          let payment = 0;
+          if(driver.payType === 'per_mile') {
+            payment = (l.miles || 0) * (driver.milesRate || driver.payRate || 0);
+          } else if(driver.payType === 'per_hour') {
+            const hoursEstimate = (l.miles || 0) / 60; // Estimate: ~60mph average
+            payment = hoursEstimate * (driver.hourlyRate || 0);
+          } else if(driver.payType === 'percentage') {
+            payment = l.rate * ((driver.percentageRate || driver.payRate || 0) / 100);
+          }
+          return fmtMoney(payment);
+        })()}</div>
+        <div style="font-size:11px;color:var(--dim);margin-top:6px;">
+          ${(() => {
+            const driver = DB.drivers.find(d=>d.id===l.driverId);
+            if(!driver) return '';
+            if(driver.payType === 'per_mile') return l.miles + ' miles × $' + (driver.milesRate || driver.payRate).toFixed(2) + '/mi';
+            else if(driver.payType === 'per_hour') return '~' + ((l.miles || 0)/60).toFixed(1) + ' hours × $' + driver.hourlyRate.toFixed(2) + '/hr';
+            else if(driver.payType === 'percentage') return (driver.percentageRate || driver.payRate).toFixed(0) + '% of load rate';
+            return '';
+          })()}
+        </div>
+      </div>` : ''}
 
       ${!completedOnly ? `
       <div class="lc-meta" style="margin-top:14px;">
@@ -731,103 +761,11 @@ function driverUploadDoc(id, type){
   const l = DB.loads.find(x=>x.id===id); l.docs[type] = `${type}_${id}_mobile.jpg`; saveDB(); renderDriverLoads(document.getElementById('main'), false);
 }
 
-/* ---------- DRIVER PAYROLL ---------- */
-function renderDriverPayroll(main){
-  const myId = 'drv1'; // demo driver: Marcus Reyes
-  const mySettlements = DB.settlements.filter(s=>s.driverId===myId);
-
-  main.innerHTML = `<div class="topbar"><div><h1>My Payroll</h1><div class="desc">Marcus Reyes — View and confirm your settlements</div></div></div>
-  <div class="card-list">${mySettlements.length? mySettlements.map(s=>{
-    const driver = DB.drivers.find(d=>d.id===s.driverId);
-    const loads = s.loadIds.map(lid=>DB.loads.find(l=>l.id===lid)).filter(Boolean);
-    const statusColor = s.status==='pending'?'#4A3A1E':'#1B3B27';
-    const statusText = s.status==='pending'?'Pending Confirmation':'Confirmed & Paid';
-    const statusColor2 = s.status==='pending'?'#F0C878':'#5FE39A';
-    return `
-    <div class="load-card">
-      <div class="lc-top">
-        <span style="font-size:14px;font-weight:600;">Settlement ${fmtDateOnly(s.periodStart)} – ${fmtDateOnly(s.periodEnd)}</span>
-        <span class="pill" style="background:${statusColor};color:${statusColor2}">${statusText}</span>
-      </div>
-
-      <div style="margin:12px 0;padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);">
-        <div style="font-size:12px;font-weight:600;color:var(--dim);margin-bottom:8px;">LOADS IN THIS SETTLEMENT:</div>
-        ${loads.map(l=>`<div style="font-size:12px;padding:6px 0;color:var(--text);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;">
-          <span>${l.id} — ${l.pickupLoc} → ${l.deliveryLoc}</span>
-          <span style="font-weight:600;">${fmtMoney(l.rate)}</span>
-        </div>`).join('')}
-      </div>
-
-      <div style="margin:12px 0;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
-        <div class="row-item"><div class="t1">Gross Pay</div><div style="font-weight:700;color:var(--accent);">${fmtMoney(s.gross)}</div></div>
-        <div class="row-item"><div class="t1">Tax Withholding</div><div>-${fmtMoney(s.taxWithholding||0)}</div></div>
-        <div class="row-item"><div class="t1">Other Deductions</div><div>-${fmtMoney(s.deductions)}</div></div>
-        <div class="row-item" style="border-bottom:none;"><div class="t1">Net Pay</div><div style="font-weight:700;font-size:18px;color:var(--accent2);">${fmtMoney(s.net)}</div></div>
-      </div>
-
-      ${s.status==='pending'?`
-      <div style="display:flex;gap:8px;margin-top:14px;">
-        <button class="confirm-btn" data-settlement-id="${s.id}" style="flex:1;padding:12px 16px;background:var(--accent2);color:#1a0d02;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;">✓ Confirm</button>
-        <button class="refuse-btn" data-settlement-id="${s.id}" style="flex:1;padding:12px 16px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;">✗ Refuse</button>
-      </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--dim);">You must confirm before receiving payment</div>
-      `:`<div style="margin-top:12px;padding:8px;background:var(--panel2);border-radius:8px;font-size:12px;color:var(--accent2);">✓ Confirmed on ${fmtDateOnly(s.paidAt)}</div>`}
-    </div>`;
-  }).join('') : '<div class="empty">No payroll statements yet.</div>'}
-  </div>`;
-
-  // Add event listeners after rendering
-  setTimeout(()=>{
-    document.querySelectorAll('.confirm-btn').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        const settlementId = btn.getAttribute('data-settlement-id');
-        confirmPayroll(settlementId);
-      });
-    });
-    document.querySelectorAll('.refuse-btn').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        const settlementId = btn.getAttribute('data-settlement-id');
-        refusePayroll(settlementId);
-      });
-    });
-  }, 0);
-}
-
-function confirmPayroll(settlementId){
-  const s = DB.settlements.find(x=>x.id===settlementId);
-  if(!s) return;
-  if(confirm(`Confirm this payroll of ${fmtMoney(s.net)}?\n\nOnce confirmed, you authorize payment processing.`)){
-    s.status = 'paid';
-    s.paidAt = new Date().toISOString();
-    saveDB();
-    renderDriverPayroll(document.getElementById('main'));
-    alert('✓ Payroll confirmed! Payment will be processed within 2-3 business days.');
-  }
-}
-
-function refusePayroll(settlementId){
-  const s = DB.settlements.find(x=>x.id===settlementId);
-  if(!s) return;
-  const reason = prompt('Why are you refusing this payroll?\n\n(This will be sent to your dispatcher):');
-  if(reason){
-    s.status = 'refused';
-    s.refusedAt = new Date().toISOString();
-    s.refuseReason = reason;
-    saveDB();
-    renderDriverPayroll(document.getElementById('main'));
-    alert('⚠ Payroll refused. Your dispatcher has been notified and will contact you.');
-  }
-}
-
 /* ---------- CUSTOMER PORTAL ---------- */
 function renderCustomerLoads(main){
   const myCustId = 'cus1'; // demo customer: Coastal Foods
   const mine = DB.loads.filter(l=>l.shipperId===myCustId);
-  main.innerHTML = `<div class="topbar"><div><h1>My Shipments</h1><div class="desc">Coastal Foods Inc. — Customer Portal</div></div></div>
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>My Shipments</h1><div class="desc">Coastal Foods Inc. — Customer Portal</div></div></div>
   <div class="card-list">${mine.map(l=>`
     <div class="load-card">
       <div class="lc-top"><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span><span class="mono">${l.id}</span></div>
@@ -838,7 +776,7 @@ function renderCustomerLoads(main){
 function renderCustomerInvoices(main){
   const myCustId = 'cus1';
   const mine = DB.loads.filter(l=>l.shipperId===myCustId && ['invoiced','paid'].includes(l.status));
-  main.innerHTML = `<div class="topbar"><div><h1>Invoices</h1><div class="desc">Coastal Foods Inc.</div></div></div>
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Invoices</h1><div class="desc">Coastal Foods Inc.</div></div></div>
   <div class="table-wrap"><table><thead><tr><th>Load #</th><th>Route</th><th>Amount</th><th>Status</th></tr></thead>
   <tbody>${mine.map(l=>`<tr><td class="mono">${l.id}</td><td>${l.pickupLoc} → ${l.deliveryLoc}</td><td>${fmtMoney(l.rate)}</td><td><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></td></tr>`).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:20px;">No invoices yet.</td></tr>`}</tbody></table></div>`;
 }
@@ -851,7 +789,7 @@ function renderLoadBoard(main){
   const postings = DB.loadBoardPostings;
   const configs = DB.loadBoardConfig || [];
   main.innerHTML = `
-  <div class="topbar"><div><h1>Load Board</h1><div class="desc">Connect to DAT, Truckstop.com, and Brokerages — post loads and pull freight</div></div></div>
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Load Board</h1><div class="desc">Connect to DAT, Truckstop.com, and Brokerages — post loads and pull freight</div></div></div>
 
   <div class="panel" style="margin-bottom:16px;">
     <h3>Load Board Integrations</h3>
@@ -948,14 +886,21 @@ const FACT_STATUS_LABEL = {submitted:'Submitted', approved:'Approved', funded:'F
 function renderFactoring(main){
   const invoiced = DB.loads.filter(l=>l.status==='invoiced');
   const subs = DB.factoringSubmissions;
-  const totalAdvanced = subs.reduce((s,f)=>{ const fc=DB.factoringCompanies.find(c=>c.id===f.factoringId); return s + (f.amount * fc.advanceRate/100); },0);
+  const totalAdvanced = subs.reduce((s,f)=>{ const fc=DB.factoringCompanies.find(c=>c.id===f.factoringId); return s + (fc ? (f.amount * fc.advanceRate/100) : 0); },0);
   main.innerHTML = `
-  <div class="topbar"><div><h1>Factoring</h1><div class="desc">Submit invoices for same-day advances and track funding</div></div></div>
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Factoring</h1><div class="desc">Submit invoices for same-day advances and track funding</div></div>${currentUser && currentUser.role === 'owner_admin' ? '<button class="btn" onclick="openFactoringCompanyModal()">+ Add Company</button>' : ''}</div>
   <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
     <div class="kpi accent"><div class="lbl">Ready to Submit</div><div class="stat-num">${invoiced.filter(l=>!subs.find(s=>s.loadId===l.id)).length}</div><div class="sub">Invoiced, not yet factored</div></div>
     <div class="kpi good"><div class="lbl">Total Advanced</div><div class="stat-num">${fmtMoney(totalAdvanced)}</div><div class="sub">Across ${subs.length} submission(s)</div></div>
     <div class="kpi"><div class="lbl">Factoring Partners</div><div class="stat-num">${DB.factoringCompanies.filter(c=>c.active).length}</div><div class="sub">${DB.factoringCompanies.map(c=>c.name).join(' · ')}</div></div>
   </div>
+  ${currentUser && currentUser.role === 'owner_admin' ? `
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>💼 Connected Companies (${DB.factoringCompanies.length}/5)</h3>
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Company</th><th>API Status</th><th>Advance Rate</th><th>Fee %</th><th>Status</th><th></th></tr></thead>
+    <tbody>${DB.factoringCompanies.map(c=>'<tr><td><b>'+c.name+'</b></td><td style="font-size:12px;color:var(--dim);">'+(c.apiKey?'<span style="color:#5FE39A;">✓ Connected</span>':'<span style="color:#E5555C;">✗ Not Connected</span>')+'</td><td>'+c.advanceRate+'%</td><td>'+c.feePct+'%</td><td>'+(c.active?'<span class="pill" style="background:#173A24;color:#5FE39A">Active</span>':'<span class="pill" style="background:#3B1E1E;color:#E5555C">Inactive</span>')+'</td><td><button class="btn small secondary" onclick="openFactoringCompanyModal(\''+c.id+'\')">Edit</button></td></tr>').join('')}</tbody></table></div>
+  </div>
+  ` : ''}
   <div class="panel" style="margin-bottom:16px;">
     <h3>Invoiced Loads</h3>
     ${invoiced.length ? invoiced.map(l=>{
@@ -970,6 +915,7 @@ function renderFactoring(main){
     <div class="table-wrap" style="border:none;"><table><thead><tr><th>Load</th><th>Factor</th><th>Amount</th><th>Advance</th><th>Reserve</th><th>Status</th><th></th></tr></thead>
     <tbody>${subs.map(s=>{
       const fc = DB.factoringCompanies.find(c=>c.id===s.factoringId);
+      if(!fc) return `<tr><td class="mono">${s.loadId}</td><td style="color:var(--danger);">Company not found</td><td>${fmtMoney(s.amount)}</td><td>—</td><td>—</td><td>${pillColor(...FACT_STATUS_COLOR[s.status],FACT_STATUS_LABEL[s.status])}</td><td></td></tr>`;
       const advance = s.amount*fc.advanceRate/100, fee = s.amount*fc.feePct/100, reserve = s.amount-advance-fee;
       return `<tr><td class="mono">${s.loadId}</td><td>${fc.name}</td><td>${fmtMoney(s.amount)}</td><td>${fmtMoney(advance)}</td><td>${fmtMoney(reserve)}</td><td>${pillColor(...FACT_STATUS_COLOR[s.status],FACT_STATUS_LABEL[s.status])}</td>
       <td>${s.status==='submitted'?`<button class="btn small" onclick="advanceFactoring('${s.id}')">Mark Funded</button>`:''}</td></tr>`;
@@ -988,6 +934,29 @@ function advanceFactoring(subId){
   saveDB(); renderFactoring(document.getElementById('main'));
 }
 
+function openFactoringCompanyModal(id){
+  if(DB.factoringCompanies.length >= 5 && !id){
+    alert('Maximum 5 factoring companies allowed');
+    return;
+  }
+  const c = id ? DB.factoringCompanies.find(x=>x.id===id) : null;
+  openEntityModal(c?'Edit Factoring Company':'Add Factoring Company', c?'Update API credentials and settings':'Connect a new factoring company', [
+    {id:'name',label:'Company Name',span2:true},
+    {id:'apiKey',label:'API Key / Credentials',span2:true},
+    {id:'apiUrl',label:'API Endpoint URL',span2:true},
+    {id:'advanceRate',label:'Advance Rate (%)',type:'number'},
+    {id:'feePct',label:'Fee Percentage (%)',type:'number'},
+    {id:'active',label:'Status',type:'select',options:[{value:true,label:'Active'},{value:false,label:'Inactive'}]},
+  ], c||{active:true}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),apiKey:g('apiKey'),apiUrl:g('apiUrl'),advanceRate:parseFloat(g('advanceRate'))||0,feePct:parseFloat(g('feePct'))||0,active:g('active')==='true'||g('active')===true};
+    if(c) Object.assign(c,data);
+    else DB.factoringCompanies.push({id:'fc'+Date.now(), ...data});
+    saveDB(); renderFactoring(document.getElementById('main'));
+    alert('✓ Factoring company '+(c?'updated':'added'));
+  });
+}
+
 /* ---------- GENERIC ENTITY MODAL (Fleet / Drivers / Customers / Accounting forms) ---------- */
 let entitySaveCallback = null;
 function openEntityModal(title, sub, fields, values, onSave){
@@ -995,9 +964,9 @@ function openEntityModal(title, sub, fields, values, onSave){
   document.getElementById('entityModalSub').textContent = sub || '';
   document.getElementById('entityFormGrid').innerHTML = fields.map(f=>{
     const val = (values && values[f.id]!=null) ? values[f.id] : '';
-    if(f.type==='select') return `<div class="field ${f.span2?'span2':''}"><label>${f.label}</label><select id="ent_${f.id}">${f.options.map(o=>`<option value="${o.value}" ${String(o.value)===String(val)?'selected':''}>${o.label}</option>`).join('')}</select></div>`;
-    if(f.type==='textarea') return `<div class="field span2"><label>${f.label}</label><textarea id="ent_${f.id}">${val}</textarea></div>`;
-    return `<div class="field ${f.span2?'span2':''}"><label>${f.label}</label><input type="${f.type||'text'}" id="ent_${f.id}" value="${val}"></div>`;
+    if(f.type==='select') return `<div class="field ${f.span2?'span2':''}"><label>${f.label}</label><select id="ent_${f.id}" ${f.readonly?'disabled':''}>${f.options.map(o=>`<option value="${o.value}" ${String(o.value)===String(val)?'selected':''}>${o.label}</option>`).join('')}</select></div>`;
+    if(f.type==='textarea') return `<div class="field span2"><label>${f.label}</label><textarea id="ent_${f.id}" ${f.readonly?'readonly':''}>${val}</textarea></div>`;
+    return `<div class="field ${f.span2?'span2':''}"><label>${f.label}</label><input type="${f.type||'text'}" id="ent_${f.id}" value="${val}" ${f.readonly?'readonly':''}></div>`;
   }).join('');
   entitySaveCallback = onSave;
   document.getElementById('entityOverlay').classList.add('open');
@@ -1013,7 +982,7 @@ function expPill(dateStr){
 /* ---------- FLEET ---------- */
 function renderFleet(main){
   main.innerHTML = `
-  <div class="topbar"><div><h1>Fleet Management</h1><div class="desc">Trucks and trailers — compliance at a glance</div></div>
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Fleet Management</h1><div class="desc">Trucks and trailers — compliance at a glance</div></div>
     <div style="display:flex;gap:8px;"><button class="btn secondary" onclick="openTrailerModal()">+ Trailer</button><button class="btn" onclick="openTruckModal()">+ Truck</button></div></div>
   <div class="panel" style="margin-bottom:16px;"><h3>Trucks</h3>
   <div class="table-wrap" style="border:none;"><table><thead><tr><th>Unit</th><th>VIN</th><th>Plate</th><th>Mileage</th><th>Insurance</th><th>Registration</th><th>Next Inspection</th><th></th></tr></thead>
@@ -1054,28 +1023,162 @@ function openTrailerModal(id){
 
 /* ---------- DRIVERS ---------- */
 function renderDrivers(main){
-  main.innerHTML = `<div class="topbar"><div><h1>Driver Management</h1><div class="desc">Profiles, CDL/medical compliance and assignments</div></div>
-  <button class="btn" onclick="openDriverModal()">+ Driver</button></div>
-  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>CDL #</th><th>CDL Exp</th><th>Medical Exp</th><th>MVR</th><th>Truck</th><th>Status</th><th></th></tr></thead>
-  <tbody>${DB.drivers.map(d=>`<tr><td>${d.name}</td><td>${d.phone}</td><td>${d.email}</td><td class="mono">${d.cdl}</td>
+  // Role-based tab access
+  const roleCanSee = {
+    owner_admin: ['all', 'w2_employees', 'owner_operators'],
+    dispatcher: ['all', 'owner_operators'],
+    accounting: ['w2_employees', 'owner_operators'],
+    safety: ['all'],
+    driver: [],
+    customer: [],
+  };
+
+  const roleDefaultFilter = {
+    owner_admin: 'all',
+    dispatcher: 'all',
+    accounting: 'w2_employees',
+    safety: 'all',
+  };
+
+  const userRole = currentUser?.role || 'dispatcher';
+  const availableTabs = roleCanSee[userRole] || [];
+  const defaultFilter = roleDefaultFilter[userRole] || 'all';
+
+  const filter = window.driverFilter || defaultFilter;
+
+  // If user tries to access a tab they can't, redirect to default
+  if(!availableTabs.includes(filter)){
+    window.driverFilter = defaultFilter;
+    return renderDrivers(main);
+  }
+
+  let filtered = DB.drivers;
+  if(filter === 'w2_employees') filtered = DB.drivers.filter(d=>d.classification==='w2_employee');
+  if(filter === 'owner_operators') filtered = DB.drivers.filter(d=>d.classification==='owner_operator_1099');
+
+  const w2Count = DB.drivers.filter(d=>d.classification==='w2_employee').length;
+  const ooCount = DB.drivers.filter(d=>d.classification==='owner_operator_1099').length;
+
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Driver Management</h1><div class="desc">Profiles, CDL/medical compliance and assignments</div></div>
+  ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher') ? '<button class="btn" onclick="openDriverModal()">+ Driver</button>' : ''}</div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+    ${availableTabs.includes('all') ? `<button class="btn ${filter==='all'?'':'secondary'}" onclick="window.driverFilter='all';renderDrivers(document.getElementById('main'))">All Drivers (${DB.drivers.length})</button>` : ''}
+    ${availableTabs.includes('w2_employees') ? `<button class="btn ${filter==='w2_employees'?'':'secondary'}" onclick="window.driverFilter='w2_employees';renderDrivers(document.getElementById('main'))">W-2 Employees (${w2Count})</button>` : ''}
+    ${availableTabs.includes('owner_operators') ? `<button class="btn ${filter==='owner_operators'?'':'secondary'}" onclick="window.driverFilter='owner_operators';renderDrivers(document.getElementById('main'))">Owner-Operators (${ooCount})</button>` : ''}
+  </div>
+
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Classification</th><th>Phone</th><th>Email</th><th>CDL #</th><th>CDL Exp</th><th>Medical Exp</th><th>MVR</th><th>Truck</th><th>Loads</th><th>Status</th><th></th></tr></thead>
+  <tbody>${filtered.map(d=>{
+    const assignedLoads = DB.loads.filter(l=>l.driverId===d.id && !['delivered','invoiced','paid','cancelled'].includes(l.status)).length;
+    return `<tr><td><b>${d.name}</b>${d.employeeId ? ' <span style="color:var(--dim);font-size:12px;">('+d.employeeId+')</span>' : ''}</td><td style="font-size:12px;"><span class="pill" style="background:${d.classification==='w2_employee'?'#2E5C3E':'#3D4A6B'};color:${d.classification==='w2_employee'?'#5FE39A':'#8FB4F0'}">${d.classification==='w2_employee'?'W-2':'1099'}</span></td><td>${d.phone}</td><td>${d.email}</td><td class="mono">${d.cdl}</td>
     <td>${expPill(d.cdlExp)}</td><td>${expPill(d.medExp)}</td><td>${d.mvr}</td><td>${truckUnit(d.truckId)}</td>
+    <td><span class="pill" style="background:${assignedLoads>0?'#3D4A6B':'transparent'};color:${assignedLoads>0?'#8FB4F0':'var(--dim)'}">${assignedLoads}</span></td>
     <td><span class="pill" style="background:${d.status==='active'?'#1B3B27':'#3B1E1E'};color:${d.status==='active'?'#5FE39A':'#E5555C'}">${d.status}</span></td>
-    <td><button class="btn small secondary" onclick="openDriverModal('${d.id}')">Edit</button></td></tr>`).join('')}</tbody></table></div>`;
+    <td>${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'dispatcher' || currentUser.role === 'accounting') ? '<button class="btn small secondary" onclick="openDriverModal(\''+d.id+'\')">Edit</button>' : ''}</td></tr>`;
+  }).join('')}</tbody></table></div>
+  `;
 }
+function updatePayRateLabel(){
+  const payTypeEl = document.getElementById('ent_payType');
+  const payRateLabel = document.querySelector('label[for="ent_payRate"]') || document.querySelector('[data-label-for="payRate"]');
+  if(!payTypeEl || !payRateLabel) return;
+  const payType = payTypeEl.value;
+  let label = 'Pay Rate';
+  if(payType==='per_mile') label = 'Pay Rate ($/mile)';
+  else if(payType==='per_hour') label = 'Pay Rate ($/hour)';
+  else if(payType==='percentage') label = 'Pay Rate (%)';
+  else if(payType==='salary') label = 'Pay Rate ($/week)';
+  payRateLabel.textContent = label;
+}
+
+function updateDriverPaymentInfo(){
+  const driverSelect = document.getElementById('f_driverId');
+  const driverId = driverSelect?.value;
+  const infoDiv = document.getElementById('driverPaymentInfo');
+
+  if(!driverId || !infoDiv) return;
+
+  const driver = DB.drivers.find(d=>d.id===driverId);
+  if(!driver) { infoDiv.style.display='none'; return; }
+
+  const miles = parseFloat(document.getElementById('f_miles')?.value || 0);
+  const hours = parseFloat(document.getElementById('f_hours')?.value || 0);
+
+  let paymentInfo = `<b>${driver.name}</b> ${driver.employeeId ? '('+driver.employeeId+')' : ''}<br>`;
+
+  if(driver.classification === 'w2_employee'){
+    paymentInfo += `<span style="color:var(--accent2);">W-2 Employee</span><br>`;
+    if(driver.payType === 'per_mile'){
+      paymentInfo += `Rate: $${driver.payRate}/mile<br>`;
+      if(miles > 0) paymentInfo += `Expected: $${(miles * driver.payRate).toFixed(2)}`;
+    } else if(driver.payType === 'per_hour'){
+      paymentInfo += `Rate: $${driver.payRate}/hour<br>`;
+      if(hours > 0) paymentInfo += `Expected: $${(hours * driver.payRate).toFixed(2)}`;
+    } else if(driver.payType === 'percentage'){
+      paymentInfo += `Rate: ${driver.payRate}% of load<br>`;
+      const rate = parseFloat(document.getElementById('f_rate')?.value || 0);
+      if(rate > 0) paymentInfo += `Expected: $${(rate * driver.payRate / 100).toFixed(2)}`;
+    }
+  } else {
+    paymentInfo += `<span style="color:#8FB4F0;">Owner-Operator (1099)</span><br>Rates: See settlement`;
+  }
+
+  infoDiv.innerHTML = paymentInfo;
+  infoDiv.style.display = 'block';
+}
+
+function getNextEmployeeId(){
+  const existingIds = DB.drivers.filter(d=>d.classification==='w2_employee').map(d=>d.employeeId).filter(id=>id && id.startsWith('DML'));
+  const numbers = existingIds.map(id=>parseInt(id.replace('DML',''))).filter(n=>!isNaN(n));
+  const nextNum = (numbers.length ? Math.max(...numbers) : 0) + 1;
+  return 'DML' + String(nextNum).padStart(2, '0');
+}
+
 function openDriverModal(id){
   const d = id ? DB.drivers.find(x=>x.id===id) : null;
-  openEntityModal(d?'Edit Driver':'Add Driver', '', [
+  const nextEmpId = d ? d.employeeId : (getNextEmployeeId());
+  openEntityModal(d?'Edit Driver':'Add Driver', d && d.classification==='w2_employee' ? 'Driver & W-2 employee details' : 'Driver profile and compliance', [
     {id:'name',label:'Full Name',span2:true},{id:'phone',label:'Phone'},{id:'email',label:'Email'},
+    {id:'classification',label:'Classification',type:'select',options:[{value:'w2_employee',label:'W-2 Employee'},{value:'owner_operator_1099',label:'Owner-Operator (1099)'}]},
     {id:'cdl',label:'CDL Number'},{id:'cdlExp',label:'CDL Expiration',type:'date'},{id:'medExp',label:'Medical Card Expiration',type:'date'},
     {id:'mvr',label:'MVR Notes',span2:true},
     {id:'truckId',label:'Assigned Truck',type:'select',options:[{value:'',label:'Unassigned'},...DB.trucks.map(t=>({value:t.id,label:t.unit}))]},
     {id:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'on_leave',label:'On Leave'},{value:'terminated',label:'Terminated'}]},
-    {id:'payType',label:'Pay Type',type:'select',options:[{value:'per_mile',label:'Per Mile'},{value:'percentage',label:'Percentage of Load'},{value:'salary',label:'Salary'}]},
-    {id:'payRate',label:'Pay Rate ($/mi, % or $/wk)',type:'number'},
-    {id:'classification',label:'Classification',type:'select',options:[{value:'w2_employee',label:'W-2 Employee'},{value:'owner_operator_1099',label:'Owner-Operator (1099)'}]},
-  ], d||{}, ()=>{
+    // W-2 Employee fields
+    {id:'employeeId',label:'Employee ID',readonly:true},
+    {id:'hourlyRate',label:'Hourly Rate ($)',type:'number'},
+    {id:'overtimeRate',label:'Overtime Rate ($)',type:'number'},
+    {id:'milesRate',label:'Per-Mile Rate ($)',type:'number'},
+    {id:'percentageRate',label:'Percentage Rate (%)',type:'number'},
+    {id:'w4Filing',label:'W-4 Filing Status',type:'select',options:[{value:'single',label:'Single'},{value:'married',label:'Married'},{value:'head_household',label:'Head of Household'}]},
+    {id:'federalWithholding',label:'Federal Withholding Allowances',type:'number'},
+    {id:'state',label:'State',span2:true},
+    {id:'healthInsurance',label:'Health Insurance ($)',type:'number'},
+    {id:'dentalInsurance',label:'Dental Insurance ($)',type:'number'},
+    {id:'visionInsurance',label:'Vision Insurance ($)',type:'number'},
+    {id:'retirement401k',label:'401(k) Contribution ($)',type:'number'},
+    {id:'hireDate',label:'Hire Date',type:'date'},
+  ], d||{employeeId:nextEmpId, hourlyRate:20, overtimeRate:30, milesRate:0.40, percentageRate:0.08, w4Filing:'single', federalWithholding:1, state:'OH', healthInsurance:250, dentalInsurance:35, visionInsurance:15, retirement401k:100}, ()=>{
     const g=k=>document.getElementById('ent_'+k).value;
-    const data={name:g('name'),phone:g('phone'),email:g('email'),cdl:g('cdl'),cdlExp:g('cdlExp'),medExp:g('medExp'),mvr:g('mvr'),truckId:g('truckId')||null,status:g('status'),payType:g('payType'),payRate:parseFloat(g('payRate'))||0,classification:g('classification')};
+    const data={name:g('name'),phone:g('phone'),email:g('email'),cdl:g('cdl'),cdlExp:g('cdlExp'),medExp:g('medExp'),mvr:g('mvr'),truckId:g('truckId')||null,status:g('status'),classification:g('classification')};
+    // Add W-2 fields if W-2 employee
+    if(g('classification')==='w2_employee'){
+      data.employeeId = nextEmpId;
+      data.hourlyRate = parseFloat(g('hourlyRate'))||20;
+      data.overtimeRate = parseFloat(g('overtimeRate'))||30;
+      data.milesRate = parseFloat(g('milesRate'))||0.40;
+      data.percentageRate = parseFloat(g('percentageRate'))||0.08;
+      data.w4Filing = g('w4Filing');
+      data.federalWithholding = parseInt(g('federalWithholding'))||1;
+      data.state = g('state');
+      data.healthInsurance = parseFloat(g('healthInsurance'))||250;
+      data.dentalInsurance = parseFloat(g('dentalInsurance'))||35;
+      data.visionInsurance = parseFloat(g('visionInsurance'))||15;
+      data.retirement401k = parseFloat(g('retirement401k'))||100;
+      data.hireDate = g('hireDate');
+    }
     if(d) Object.assign(d,data); else DB.drivers.push({id:'drv'+Date.now(), ...data});
     saveDB(); renderDrivers(document.getElementById('main'));
   });
@@ -1083,7 +1186,7 @@ function openDriverModal(id){
 
 /* ---------- CUSTOMERS ---------- */
 function renderCustomersPage(main){
-  main.innerHTML = `<div class="topbar"><div><h1>Customer Management</h1><div class="desc">Shippers, brokers, billing terms and load history</div></div>
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>Customer Management</h1><div class="desc">Shippers, brokers, billing terms and load history</div></div>
   <button class="btn" onclick="openCustomerModal()">+ Customer</button></div>
   <div class="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Contact</th><th>Email</th><th>Phone</th><th>Terms</th><th>Loads</th><th>Revenue</th><th></th></tr></thead>
   <tbody>${DB.customers.map(c=>{
@@ -1109,13 +1212,30 @@ function openCustomerModal(id){
 
 /* ---------- ACCOUNTING ---------- */
 function renderAccounting(main){
+  const tab = window.accountingTab || 'overview';
+
+  if(tab === 'payroll') return renderW2Payroll(main);
+  if(tab === 'settlements') return renderOwnerOpSettlements(main);
+
+  // OVERVIEW TAB
   const revenue = DB.loads.filter(l=>l.status!=='cancelled').reduce((s,l)=>s+l.rate+l.detention+l.layover+l.tonu,0);
   const byCat = {};
   DB.expenses.forEach(e=>{ byCat[e.category]=(byCat[e.category]||0)+e.amount; });
   const totalExpenses = Object.values(byCat).reduce((a,b)=>a+b,0);
   const invoiced = DB.loads.filter(l=>['invoiced','paid'].includes(l.status));
-  main.innerHTML = `<div class="topbar"><div><h1>Accounting</h1><div class="desc">Revenue, expenses, invoices and profit/loss</div></div>
+
+  const pendingPayrolls = DB.w2Payrolls.filter(p=>p.status==='pending').length;
+  const pendingSettlements = DB.ownerOperatorSettlements.filter(s=>s.status==='pending').length;
+
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="document.getElementById('navItems').querySelectorAll('[data-key=dashboard]')[0].click()">← Back to Dashboard</button><h1>Accounting</h1><div class="desc">Revenue, expenses, payroll and settlements</div></div>
   <button class="btn" onclick="openExpenseModal()">+ Record Expense</button></div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+    <button class="btn ${tab==='overview'?'':'secondary'}" onclick="window.accountingTab='overview';renderAccounting(document.getElementById('main'))">Overview</button>
+    <button class="btn ${tab==='payroll'?'':'secondary'}" onclick="window.accountingTab='payroll';renderAccounting(document.getElementById('main'))">W-2 Payroll ${pendingPayrolls?'('+pendingPayrolls+')':''}</button>
+    <button class="btn ${tab==='settlements'?'':'secondary'}" onclick="window.accountingTab='settlements';renderAccounting(document.getElementById('main'))">O/O Settlements ${pendingSettlements?'('+pendingSettlements+')':''}</button>
+  </div>
+
   <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
     <div class="kpi good"><div class="lbl">Revenue</div><div class="stat-num">${fmtMoney(revenue)}</div><div class="sub">All loads booked</div></div>
     <div class="kpi bad"><div class="lbl">Expenses</div><div class="stat-num">${fmtMoney(totalExpenses)}</div><div class="sub">${DB.expenses.length} entries</div></div>
@@ -1126,13 +1246,16 @@ function renderAccounting(main){
     ${Object.entries(byCat).map(([cat,amt])=>`<div class="row-item"><div class="t1">${cat.replace('_',' ')}</div><div>${fmtMoney(amt)}</div></div>`).join('') || '<div class="empty">No expenses recorded.</div>'}
     </div>
     <div class="panel"><h3>Invoices</h3>
-    ${invoiced.length ? invoiced.map(l=>`<div class="row-item"><div><div class="t1">${l.id} — ${custName(l.shipperId)}</div><div class="t2">${fmtMoney(l.rate)}</div></div><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></div>`).join('') : '<div class="empty">No invoices yet.</div>'}
+    ${invoiced.length ? invoiced.map(l=>{
+      const cust = DB.customers.find(c=>c.id===l.shipperId) || {name:'Unknown'};
+      return `<div class="row-item"><div><div class="t1">${l.id} — ${cust.name}</div><div class="t2">${fmtMoney(l.rate)} · Status: ${STATUS_LABEL[l.status]}</div></div><span class="pill st-${l.status}">${STATUS_LABEL[l.status]}</span></div>`;
+    }).join('') : '<div class="empty">No invoices yet.</div>'}
     </div>
   </div>`;
 }
 function openExpenseModal(){
   openEntityModal('Record Expense', '', [
-    {id:'category',label:'Category',type:'select',options:[{value:'fuel',label:'Fuel'},{value:'tolls',label:'Tolls'},{value:'maintenance',label:'Maintenance'},{value:'driver_pay',label:'Driver Pay'},{value:'other',label:'Other'}]},
+    {id:'category',label:'Category',type:'select',options:[{value:'fuel',label:'Fuel'},{value:'tolls',label:'Tolls'},{value:'maintenance',label:'Maintenance'},{value:'insurance',label:'Insurance'},{value:'driver_pay',label:'Driver Pay'},{value:'other',label:'Other'}]},
     {id:'amount',label:'Amount ($)',type:'number'},{id:'date',label:'Date',type:'date'},{id:'notes',label:'Description',span2:true},
   ], {date:'2026-09-27'}, ()=>{
     const g=k=>document.getElementById('ent_'+k).value;
@@ -1141,113 +1264,623 @@ function openExpenseModal(){
   });
 }
 
-/* ---------- DOCUMENTS ---------- */
-function renderDocuments(main){
-  const rows = [];
-  DB.loads.forEach(l=>Object.entries(l.docs).forEach(([type,file])=>{ if(file) rows.push({category:'Load', type, related:l.id, file}); }));
-  DB.drivers.forEach(d=>{ rows.push({category:'Driver', type:'CDL', related:d.name, file:d.cdl}); rows.push({category:'Driver', type:'Medical Card', related:d.name, file:'expires '+fmtDateOnly(d.medExp)}); });
-  DB.trucks.forEach(t=>{ rows.push({category:'Truck', type:'Registration', related:t.unit, file:'expires '+fmtDateOnly(t.regExp)}); rows.push({category:'Truck', type:'Insurance', related:t.unit, file:'expires '+fmtDateOnly(t.insExp)}); });
-  main.innerHTML = `<div class="topbar"><div><h1>Document Center</h1><div class="desc">Every uploaded and on-file document across the company</div></div></div>
-  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Type</th><th>Related To</th><th>File / Detail</th></tr></thead>
-  <tbody>${rows.map(r=>`<tr><td>${r.category}</td><td>${r.type}</td><td>${r.related}</td><td class="mono">${r.file}</td></tr>`).join('')}</tbody></table></div>`;
+/* ---------- W-2 PAYROLL ---------- */
+function renderW2Payroll(main){
+  const pending = DB.w2Payrolls.filter(p=>p.status==='pending');
+  const approved = DB.w2Payrolls.filter(p=>p.status==='approved');
+  const paid = DB.w2Payrolls.filter(p=>p.status==='paid');
+
+  const pendingGross = pending.reduce((s,p)=>s+p.grossWages,0);
+  const totalNet = DB.w2Payrolls.reduce((s,p)=>s+p.netPay,0);
+
+  const w2Drivers = DB.drivers.filter(d=>d.classification==='w2_employee');
+
+  main.innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='overview';renderAccounting(document.getElementById('main'))">← Back to Accounting</button><h1>W-2 Payroll Management</h1><div class="desc">Employee payroll, taxes and deductions</div></div>
+  ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ? '<button class="btn" onclick="generatePayrollRun()">+ Generate Payroll Run</button>' : ''}</div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi warn"><div class="lbl">Pending Approval</div><div class="stat-num">${pending.length}</div><div class="sub">${fmtMoney(pendingGross)} gross</div></div>
+    <div class="kpi accent"><div class="lbl">Approved</div><div class="stat-num">${approved.length}</div><div class="sub">Ready to pay</div></div>
+    <div class="kpi good"><div class="lbl">Paid Out</div><div class="stat-num">${paid.length}</div><div class="sub">${fmtMoney(totalNet)} net</div></div>
+    <div class="kpi"><div class="lbl">W-2 Drivers</div><div class="stat-num">${w2Drivers.length}</div><div class="sub">Active employees</div></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>Pending Payrolls</h3>
+    ${pending.length ? `
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Employee</th><th>Period</th><th>Gross</th><th>Taxes</th><th>Deductions</th><th>Net</th><th></th></tr></thead>
+    <tbody>${pending.map(p=>{
+      const drv = DB.drivers.find(d=>d.id===p.driverId);
+      if(!drv) return '<tr><td>Driver not found</td><td colspan="6" style="color:var(--danger);">Invalid driver reference</td></tr>';
+      const totalTaxes = p.federalIncome + p.socialSecurity + p.medicare + p.stateIncome;
+      const deleteBtn = (currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting')) ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;margin-left:4px;" onclick="deletePayroll('${p.id}')">Delete</button>` : '';
+      return `<tr><td><b>${drv.name} (${drv.employeeId})</b></td><td style="font-size:12px;">${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</td><td>${fmtMoney(p.grossWages)}</td><td>${fmtMoney(totalTaxes)}</td><td>${fmtMoney(p.healthInsurance+p.dentalInsurance+p.visionInsurance+p.retirement401k+p.otherDeductions)}</td><td><b>${fmtMoney(p.netPay)}</b></td><td style="font-size:12px;"><button class="btn small secondary" onclick="openW2PayrollDetail('${p.id}')">Review</button>${deleteBtn}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ` : '<div class="empty">No pending payrolls.</div>'}</div>
+
+  <div class="panel">
+    <h3>All Payroll History</h3>
+    ${DB.w2Payrolls.length ? `
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Employee</th><th>Period</th><th>Gross</th><th>Net</th><th>Status</th><th></th></tr></thead>
+    <tbody>${DB.w2Payrolls.map(p=>{
+      const drv = DB.drivers.find(d=>d.id===p.driverId);
+      if(!drv) return '<tr><td>Driver not found</td><td colspan="5" style="color:var(--danger);">Invalid driver reference</td></tr>';
+      const statusColor = p.status==='pending'?'#4A3A1E':p.status==='approved'?'#3D4A6B':'#1B3B27';
+      const deleteBtn = (currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting')) ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;margin-left:4px;" onclick="deletePayroll('${p.id}')">Delete</button>` : '';
+      return `<tr><td>${drv.name} (${drv.employeeId})</td><td style="font-size:12px;">${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</td><td>${fmtMoney(p.grossWages)}</td><td>${fmtMoney(p.netPay)}</td><td><span class="pill" style="background:${statusColor};color:var(--accent2);">${p.status}</span></td><td style="font-size:12px;"><button class="btn small secondary" onclick="openW2PayrollDetail('${p.id}')">View</button>${deleteBtn}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ` : '<div class="empty">No payroll records yet.</div>'}</div>
+  `;
 }
 
-/* ---------- PAYROLL ---------- */
-const SETTLED_STATUS_COLOR = {pending:['#4A3A1E','#F0C878'], paid:['#173A24','#5FE39A']};
-const TAX_RATES = {federal:0.12, state:0.04, fica:0.0765}; // simplified estimated withholding for W-2 drivers
-function payForLoad(driver, load){
-  if(driver.payType==='percentage') return load.rate * (driver.payRate/100);
-  if(driver.payType==='per_mile') return load.miles * driver.payRate;
-  return 0; // salary handled outside per-load calc
+function generatePayrollRun(){
+  const w2Drivers = DB.drivers.filter(d=>d.classification==='w2_employee');
+  if(w2Drivers.length === 0) { alert('No W-2 employees found'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay open';
+  overlay.innerHTML = `
+  <div class="modal modal-wrap" style="max-width:600px;">
+    <button class="close-x" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Generate Payroll Run</h2>
+    <div class="modal-sub">Create payroll records for W-2 employees</div>
+    <div class="form-grid" id="payrollForm">
+      <div class="field"><label>Pay Period Start Date</label><input type="date" id="startDate" required></div>
+      <div class="field"><label>Pay Period End Date</label><input type="date" id="endDate" required></div>
+      <div class="field span2" style="margin-bottom:12px;"><label style="display:flex;align-items:center;gap:10px;"><input type="checkbox" id="selectAll"> <strong>Select All Employees</strong></label></div>
+      <div class="field span2" style="border:1px solid var(--border);border-radius:6px;padding:10px;max-height:200px;overflow-y:auto;margin-bottom:12px;">
+        ${w2Drivers.map(d=>`<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" class="emp-checkbox" value="${d.id}" data-name="${d.name}"> ${d.name} (${d.employeeId})</label>`).join('')}
+      </div>
+      <div class="field span2"><label>Hours for All Employees</label><input type="number" id="hoursInput" placeholder="Hours" min="0" step="0.5" required></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="this.closest('.overlay').remove()">Cancel</button>
+      <button class="btn" onclick="submitPayrollRun()">Create Payroll Run</button>
+    </div>
+  </div>
+  `;
+  document.body.appendChild(overlay);
+
+  setTimeout(()=>{
+    document.getElementById('selectAll').addEventListener('change', function(){
+      document.querySelectorAll('.emp-checkbox').forEach(cb=>cb.checked=this.checked);
+    });
+  }, 0);
 }
-function estimatedWithholding(driver, gross){
-  if(driver.classification!=='w2_employee') return 0; // 1099 owner-operators handle their own taxes
-  const rate = TAX_RATES.federal + TAX_RATES.state + TAX_RATES.fica;
-  return Math.round(gross * rate * 100)/100;
-}
-function settledLoadIds(){ const s=new Set(); DB.settlements.forEach(st=>st.loadIds.forEach(id=>s.add(id))); return s; }
-function unsettledLoadsFor(driverId){
-  const settled = settledLoadIds();
-  return DB.loads.filter(l=> l.driverId===driverId && ['delivered','documents_pending','invoiced','paid'].includes(l.status) && !settled.has(l.id));
-}
-function renderPayroll(main){
-  const rows = DB.drivers.map(d=>{
-    const loads = unsettledLoadsFor(d.id);
-    const gross = loads.reduce((s,l)=>s+payForLoad(d,l),0) + loads.reduce((s,l)=>s+l.detention+l.layover,0);
-    return {driver:d, loads, gross};
+
+function submitPayrollRun(){
+  const startDate = document.getElementById('startDate').value;
+  const endDate = document.getElementById('endDate').value;
+  const hours = parseFloat(document.getElementById('hoursInput').value);
+  const selected = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb=>cb.value);
+
+  if(!startDate || !endDate) { alert('Please enter both dates'); return; }
+  if(selected.length === 0) { alert('Please select at least one employee'); return; }
+  if(isNaN(hours) || hours < 0) { alert('Please enter valid hours'); return; }
+
+  selected.forEach(driverId=>{
+    const driver = DB.drivers.find(d=>d.id===driverId);
+    if(!driver) return;
+
+    const rate = driver.employmentDetails?.hourlyRate || 0;
+    const grossWages = hours * rate;
+    const taxes = grossWages * 0.15; // 15% tax estimate
+    const deductions = driver.employmentDetails?.deductions || 0;
+    const netPay = grossWages - taxes - deductions;
+
+    const newPayroll = {
+      id: 'w2p_'+Date.now()+'_'+Math.random().toString(36).substr(2,9),
+      driverId: driverId,
+      payPeriod: { startDate, endDate },
+      hoursWorked: hours,
+      hourlyRate: rate,
+      grossWages: parseFloat(grossWages.toFixed(2)),
+      taxes: parseFloat(taxes.toFixed(2)),
+      deductions: parseFloat(deductions.toFixed(2)),
+      netPay: parseFloat(netPay.toFixed(2)),
+      status: 'pending',
+      createdBy: currentUser.id,
+      createdAt: new Date().toISOString()
+    };
+
+    DB.w2Payrolls.push(newPayroll);
   });
-  const totalGrossOwed = rows.reduce((s,r)=>s+r.gross,0);
-  const totalPaidYtd = DB.settlements.filter(s=>s.status==='paid').reduce((s,st)=>s+st.net,0);
+
+  saveData();
+  document.querySelector('.modal').remove();
+  alert('Payroll run created for '+selected.length+' employee(s)');
+  renderW2Payroll(document.getElementById('main'));
+}
+
+function openW2PayrollDetail(payrollId){
+  const p = DB.w2Payrolls.find(x=>x.id===payrollId);
+  if(!p) { alert('Payroll not found'); return; }
+  const d = DB.drivers.find(x=>x.id===p.driverId);
+  if(!d) { alert('Driver not found for this payroll'); return; }
+  const totalTaxes = p.federalIncome + p.socialSecurity + p.medicare + p.stateIncome;
+  const totalDeduct = p.healthInsurance + p.dentalInsurance + p.visionInsurance + p.retirement401k + p.otherDeductions;
+
+  document.getElementById('main').innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='payroll';renderAccounting(document.getElementById('main'))">← Back to Payroll</button><h1>W-2 Payroll Detail</h1><div class="desc">${d.name} (${d.employeeId}) · ${fmtDateOnly(p.payPeriod.startDate)} – ${fmtDateOnly(p.payPeriod.endDate)}</div></div></div>
+
+  <div class="dash-cols">
+    <div class="panel">
+      <h3>Gross Wages</h3>
+      <div class="row-item"><div class="t1">Regular Hours (${p.regularHours}h)</div><div>${fmtMoney(p.regularHours * d.hourlyRate)}</div></div>
+      <div class="row-item"><div class="t1">Overtime Hours (${p.overtimeHours}h)</div><div>${fmtMoney(p.overtimeHours * d.overtimeRate)}</div></div>
+      <div class="row-item"><div class="t1">Mileage Pay</div><div>${fmtMoney(p.milesPay)}</div></div>
+      <div class="row-item"><div class="t1">Percentage Pay</div><div>${fmtMoney(p.percentagePay)}</div></div>
+      <div class="row-item"><div class="t1">Bonuses</div><div>${fmtMoney(p.bonuses)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Reimbursements</div><div>${fmtMoney(p.reimbursements)}</div></div>
+      <div class="row-item" style="font-weight:700;font-size:16px;"><div class="t1">GROSS WAGES</div><div style="color:var(--accent);">${fmtMoney(p.grossWages)}</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>Deductions</h3>
+      <div class="row-item"><div class="t1">Federal Income Tax</div><div>${fmtMoney(p.federalIncome)}</div></div>
+      <div class="row-item"><div class="t1">Social Security (6.2%)</div><div>${fmtMoney(p.socialSecurity)}</div></div>
+      <div class="row-item"><div class="t1">Medicare (1.45%)</div><div>${fmtMoney(p.medicare)}</div></div>
+      <div class="row-item"><div class="t1">State Income Tax</div><div>${fmtMoney(p.stateIncome)}</div></div>
+      <div class="row-item" style="border-bottom:1px solid var(--border);"><div class="t1">Local Taxes</div><div>${fmtMoney(p.localTaxes)}</div></div>
+      <div class="row-item" style="color:var(--dim);font-size:12px;"><div class="t1">Subtotal Taxes</div><div>${fmtMoney(totalTaxes)}</div></div>
+
+      <div class="row-item" style="margin-top:12px;"><div class="t1">Health Insurance</div><div>${fmtMoney(p.healthInsurance)}</div></div>
+      <div class="row-item"><div class="t1">Dental Insurance</div><div>${fmtMoney(p.dentalInsurance)}</div></div>
+      <div class="row-item"><div class="t1">Vision Insurance</div><div>${fmtMoney(p.visionInsurance)}</div></div>
+      <div class="row-item"><div class="t1">401k Contribution</div><div>${fmtMoney(p.retirement401k)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Other Deductions</div><div>${fmtMoney(p.otherDeductions)}</div></div>
+      <div class="row-item" style="font-weight:700;font-size:16px;"><div class="t1">TOTAL DEDUCTIONS</div><div style="color:var(--danger);">${fmtMoney(totalTaxes + totalDeduct)}</div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="text-align:center;padding:24px;margin-top:16px;background:var(--panel2);border-radius:12px;">
+    <div style="font-size:14px;color:var(--dim);margin-bottom:8px;">NET PAY</div>
+    <div style="font-size:40px;font-weight:700;color:var(--accent2);">${fmtMoney(p.netPay)}</div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+      ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ?
+        (p.status === 'pending' ? `
+          <button class="btn" onclick="approveW2Payroll('${p.id}')">✓ Approve</button>
+          <button class="btn secondary" onclick="deletePayroll('${p.id}')">🗑️ Delete</button>
+        ` : p.status === 'approved' ? `
+          <button class="btn" onclick="markW2PayrollPaid('${p.id}')">💰 Mark as Paid</button>
+          <button class="btn secondary" onclick="deletePayroll('${p.id}')">🗑️ Delete</button>
+        ` : `
+          <span class="pill" style="background:#1B3B27;color:#5FE39A;padding:8px 16px;">✓ Paid</span>
+          <button class="btn secondary" onclick="deletePayroll('${p.id}')">🗑️ Delete</button>
+        `)
+        : (p.status === 'paid' ? '<span class="pill" style="background:#1B3B27;color:#5FE39A;padding:8px 16px;">✓ Paid</span>' : '')
+      }
+    </div>
+  </div>
+  `;
+}
+
+function openW2EmployeeModal(id){
+  const e = id ? DB.w2Employees.find(x=>x.id===id) : null;
+  openEntityModal(e?'Edit Employee':'Add W-2 Employee', e?'Update employee compensation and benefits':'Create new W-2 employee record', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'employeeId',label:'Employee ID'},
+    {id:'truckAssigned',label:'Assigned Truck'},
+    {id:'hourlyRate',label:'Hourly Rate ($)',type:'number'},
+    {id:'overtimeRate',label:'Overtime Rate ($)',type:'number'},
+    {id:'milesRate',label:'Miles Rate ($/mi)',type:'number'},
+    {id:'percentageRate',label:'Percentage Rate (%)',type:'number'},
+    {id:'healthInsurance',label:'Health Insurance ($)',type:'number'},
+    {id:'dentalInsurance',label:'Dental Insurance ($)',type:'number'},
+    {id:'visionInsurance',label:'Vision Insurance ($)',type:'number'},
+    {id:'retirement401k',label:'401k Contribution ($)',type:'number'},
+    {id:'state',label:'State'},
+    {id:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'on_leave',label:'On Leave'},{value:'terminated',label:'Terminated'}]},
+  ], e||{status:'active'}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),employeeId:g('employeeId'),truckAssigned:g('truckAssigned'),hourlyRate:parseFloat(g('hourlyRate'))||0,overtimeRate:parseFloat(g('overtimeRate'))||0,milesRate:parseFloat(g('milesRate'))||0,percentageRate:parseFloat(g('percentageRate'))||0,healthInsurance:parseFloat(g('healthInsurance'))||0,dentalInsurance:parseFloat(g('dentalInsurance'))||0,visionInsurance:parseFloat(g('visionInsurance'))||0,retirement401k:parseFloat(g('retirement401k'))||0,state:g('state'),status:g('status')};
+    if(e) Object.assign(e,data); else DB.w2Employees.push({id:'w2_'+Date.now(),...data});
+    saveDB(); window.accountingTab='payroll'; renderAccounting(document.getElementById('main'));
+    alert('✓ Employee '+(e?'updated':'added'));
+  });
+}
+
+function approveW2Payroll(payrollId){
+  const p = DB.w2Payrolls.find(x=>x.id===payrollId);
+  p.status='approved'; p.approvedBy=currentUser.name; p.approvedAt=new Date().toISOString();
+  saveDB(); window.accountingTab='payroll'; renderAccounting(document.getElementById('main'));
+  alert('✓ Payroll approved and ready to pay');
+}
+
+function markW2PayrollPaid(payrollId){
+  const p = DB.w2Payrolls.find(x=>x.id===payrollId);
+  p.status='paid'; p.paidAt=new Date().toISOString();
+  saveDB(); window.accountingTab='payroll'; renderAccounting(document.getElementById('main'));
+  alert('✓ Payroll marked as paid (ACH transfer)');
+}
+
+function deletePayroll(payrollId){
+  if(!confirm('Are you sure you want to delete this payroll? This action cannot be undone.')) return;
+  const idx = DB.w2Payrolls.findIndex(p=>p.id===payrollId);
+  if(idx > -1) {
+    DB.w2Payrolls.splice(idx, 1);
+    saveDB();
+    alert('Payroll deleted successfully');
+    window.accountingTab = 'payroll';
+    renderAccounting(document.getElementById('main'));
+  }
+}
+
+/* ---------- OWNER-OPERATOR SETTLEMENTS ---------- */
+function renderOwnerOpSettlements(main){
+  const pending = DB.ownerOperatorSettlements.filter(s=>s.status==='pending');
+  const approved = DB.ownerOperatorSettlements.filter(s=>s.status==='approved');
+  const paid = DB.ownerOperatorSettlements.filter(s=>s.status==='paid');
+
+  const pendingTotal = pending.reduce((s,x)=>s+x.grossRevenue,0);
+  const paidOut = paid.reduce((s,x)=>s+x.netSettlement,0);
+
   main.innerHTML = `
-  <div class="topbar"><div><h1>Payroll</h1><div class="desc">Driver settlements — W-2 withholding &amp; 1099 owner-operator statements</div></div></div>
-  <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
-    <div class="kpi warn"><div class="lbl">Unsettled Gross Pay</div><div class="stat-num">${fmtMoney(totalGrossOwed)}</div><div class="sub">Across ${rows.filter(r=>r.loads.length).length} driver(s)</div></div>
-    <div class="kpi good"><div class="lbl">Paid Out</div><div class="stat-num">${fmtMoney(totalPaidYtd)}</div><div class="sub">${DB.settlements.filter(s=>s.status==='paid').length} settlement(s)</div></div>
-    <div class="kpi"><div class="lbl">Pending Settlements</div><div class="stat-num">${DB.settlements.filter(s=>s.status==='pending').length}</div><div class="sub">Awaiting payment</div></div>
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='overview';renderAccounting(document.getElementById('main'))">← Back to Accounting</button><h1>Owner-Operator Settlements</h1><div class="desc">Revenue, deductions and net settlement tracking</div></div>
+  <div style="display:flex;gap:8px;">
+    ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ? '<button class="btn" onclick="generateSettlement()">+ Generate Settlement</button>' : ''}
+    ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ? '<button class="btn secondary" onclick="openOwnerOpModal()">+ Owner-Op</button>' : ''}
+  </div></div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi warn"><div class="lbl">Pending Review</div><div class="stat-num">${pending.length}</div><div class="sub">${fmtMoney(pendingTotal)} revenue</div></div>
+    <div class="kpi accent"><div class="lbl">Approved</div><div class="stat-num">${approved.length}</div><div class="sub">Ready to pay</div></div>
+    <div class="kpi good"><div class="lbl">Paid Out</div><div class="stat-num">${paid.length}</div><div class="sub">${fmtMoney(paidOut)}</div></div>
+    <div class="kpi"><div class="lbl">Operators</div><div class="stat-num">${DB.ownerOperators.length}</div><div class="sub">Active 1099s</div></div>
   </div>
+
   <div class="panel" style="margin-bottom:16px;">
-    <h3>Driver Pay Summary</h3>
-    ${rows.map(r=>{
-      const cls = r.driver.classification==='w2_employee' ? 'W-2' : '1099 Owner-Op';
-      return `<div class="row-item"><div><div class="t1">${r.driver.name} <span class="t2">(${cls})</span></div><div class="t2">${r.driver.payType==='per_mile'?'$'+r.driver.payRate+'/mi':r.driver.payType==='percentage'?r.driver.payRate+'% of load':'Salary'} · ${r.loads.length} completed load(s) unsettled</div></div>
-      <div style="display:flex;align-items:center;gap:10px;"><b>${fmtMoney(r.gross)}</b>${r.loads.length?`<button class="btn small" onclick="openSettlementModal('${r.driver.id}')">Create Settlement</button>`:''}</div></div>`;
-    }).join('')}
-  </div>
+    <h3>Pending Settlements</h3>
+    ${pending.length ? `
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>O/O Name</th><th>Period</th><th>Loads</th><th>Gross</th><th>Deductions</th><th>Net</th><th></th></tr></thead>
+    <tbody>${pending.map(s=>{
+      const oo = DB.ownerOperators.find(o=>o.id===s.ownerOperatorId);
+      const deleteBtn = (currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting')) ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;margin-left:4px;" onclick="deleteSettlement('${s.id}')">Delete</button>` : '';
+      return `<tr><td><b>${oo.name}</b></td><td style="font-size:12px;">${fmtDateOnly(s.settlementPeriod.startDate)} – ${fmtDateOnly(s.settlementPeriod.endDate)}</td><td>${s.loadIds.length}</td><td>${fmtMoney(s.grossRevenue)}</td><td>${fmtMoney(s.deductions.totalDeductions)}</td><td><b>${fmtMoney(s.netSettlement)}</b></td><td style="font-size:12px;"><button class="btn small secondary" onclick="openOwnerOpSettlementDetail('${s.id}')">Review</button>${deleteBtn}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ` : '<div class="empty">No pending settlements.</div>'}</div>
+
   <div class="panel">
     <h3>Settlement History</h3>
-    <div class="table-wrap" style="border:none;"><table><thead><tr><th>Driver</th><th>Period</th><th>Gross</th><th>Taxes</th><th>Other Ded.</th><th>Net Pay</th><th>Status</th><th></th></tr></thead>
-    <tbody>${DB.settlements.map(s=>{
-      const d = DB.drivers.find(x=>x.id===s.driverId);
-      return `<tr><td>${d?d.name:'—'}</td><td>${fmtDateOnly(s.periodStart)} – ${fmtDateOnly(s.periodEnd)}</td><td>${fmtMoney(s.gross)}</td><td>${fmtMoney(s.taxWithholding||0)}</td><td>${fmtMoney(s.deductions)}</td><td><b>${fmtMoney(s.net)}</b></td>
-      <td>${pillColor(...SETTLED_STATUS_COLOR[s.status], s.status)}</td>
-      <td style="display:flex;gap:6px;"><button class="btn small secondary" onclick="openPayStub('${s.id}')">View Stub</button>${s.status==='pending'?`<button class="btn small" onclick="markSettlementPaid('${s.id}')">Mark Paid</button>`:''}</td></tr>`;
-    }).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:20px;">No settlements yet.</td></tr>`}</tbody></table></div>
-  </div>`;
+    ${DB.ownerOperatorSettlements.length ? `
+    <div class="table-wrap" style="border:none;"><table><thead><tr><th>O/O</th><th>Period</th><th>Loads</th><th>Net</th><th>Status</th><th></th></tr></thead>
+    <tbody>${DB.ownerOperatorSettlements.map(s=>{
+      const oo = DB.ownerOperators.find(o=>o.id===s.ownerOperatorId);
+      const statusColor = s.status==='pending'?'#4A3A1E':s.status==='approved'?'#3D4A6B':'#1B3B27';
+      const deleteBtn = (currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting')) ? `<button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;margin-left:4px;" onclick="deleteSettlement('${s.id}')">Delete</button>` : '';
+      return `<tr><td>${oo.name}</td><td style="font-size:12px;">${fmtDateOnly(s.settlementPeriod.startDate)} – ${fmtDateOnly(s.settlementPeriod.endDate)}</td><td>${s.loadIds.length}</td><td>${fmtMoney(s.netSettlement)}</td><td><span class="pill" style="background:${statusColor};color:var(--accent2);">${s.status}</span></td><td style="font-size:12px;"><button class="btn small secondary" onclick="openOwnerOpSettlementDetail('${s.id}')">View</button>${deleteBtn}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ` : '<div class="empty">No settlements yet.</div>'}</div>
+  `;
 }
-function openSettlementModal(driverId){
-  const d = DB.drivers.find(x=>x.id===driverId);
-  const loads = unsettledLoadsFor(driverId);
-  const gross = loads.reduce((s,l)=>s+payForLoad(d,l),0) + loads.reduce((s,l)=>s+l.detention+l.layover,0);
-  const estTax = estimatedWithholding(d, gross);
-  const taxNote = d.classification==='w2_employee' ? `Est. tax withholding (fed/state/FICA): ${fmtMoney(estTax)}` : 'Owner-operator — no tax withheld, 1099 issued at year end';
-  openEntityModal(`Settlement — ${d.name}`, `${loads.length} load(s): ${loads.map(l=>l.id).join(', ')} · gross ${fmtMoney(gross)} · ${taxNote}`, [
-    {id:'deductions',label:'Other Deductions ($) — advances, escrow, fuel card, etc.',type:'number',span2:true},
-  ], {deductions:0}, ()=>{
-    const deductions = parseFloat(document.getElementById('ent_deductions').value)||0;
-    const today = new Date().toISOString();
-    const net = Math.round((gross-estTax-deductions)*100)/100;
-    DB.settlements.push({id:'st'+Date.now(), driverId, loadIds:loads.map(l=>l.id), periodStart:today.slice(0,10), periodEnd:today.slice(0,10), gross:Math.round(gross*100)/100, taxWithholding:estTax, deductions, net, status:'pending', createdAt:today, paidAt:null});
-    saveDB(); renderPayroll(document.getElementById('main'));
+
+function openOwnerOpSettlementDetail(settlementId){
+  const s = DB.ownerOperatorSettlements.find(x=>x.id===settlementId);
+  const oo = DB.ownerOperators.find(o=>o.id===s.ownerOperatorId);
+  const loads = s.loadIds.map(id=>DB.loads.find(l=>l.id===id)).filter(Boolean);
+
+  document.getElementById('main').innerHTML = `
+  <div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="window.accountingTab='settlements';renderAccounting(document.getElementById('main'))">← Back to Settlements</button><h1>Settlement Statement</h1><div class="desc">${oo.name} (${oo.companyName}) · Truck ${oo.truckNumber}</div></div></div>
+
+  <div class="panel" style="background:var(--panel2);padding:24px;border-radius:12px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div><div style="font-size:12px;color:var(--dim);">Settlement Period</div><div style="font-weight:600;">${fmtDateOnly(s.settlementPeriod.startDate)} – ${fmtDateOnly(s.settlementPeriod.endDate)}</div></div>
+      <div><div style="font-size:12px;color:var(--dim);">Settlement #</div><div style="font-weight:600;">${s.id}</div></div>
+    </div>
+
+    <h3 style="margin:16px 0 12px;">Loads Included</h3>
+    <div style="background:var(--panel);border-radius:8px;padding:12px;">
+      ${loads.map(l=>'<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid var(--border);"><span>'+l.id+' — '+l.pickupLoc+' → '+l.deliveryLoc+'</span><span style="font-weight:600;">'+fmtMoney(l.rate+l.detention+l.layover+l.tonu)+'</span></div>').join('')}
+    </div>
+  </div>
+
+  <div class="dash-cols">
+    <div class="panel">
+      <h3>Credits (Revenue)</h3>
+      <div class="row-item"><div class="t1">Load Revenue</div><div>${fmtMoney(s.creditsBreakdown.loadRevenue)}</div></div>
+      <div class="row-item"><div class="t1">Accessorials</div><div>${fmtMoney(s.creditsBreakdown.accessorials)}</div></div>
+      <div class="row-item"><div class="t1">Bonuses</div><div>${fmtMoney(s.creditsBreakdown.bonuses)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Reimbursements</div><div>${fmtMoney(s.creditsBreakdown.reimbursements)}</div></div>
+      <div class="row-item" style="font-weight:700;color:var(--accent);"><div class="t1">TOTAL CREDITS</div><div>${fmtMoney(s.grossRevenue)}</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>Deductions</h3>
+      <div class="row-item"><div class="t1">Insurance</div><div>${fmtMoney(s.deductions.insurance)}</div></div>
+      <div class="row-item"><div class="t1">Dispatch Fee (${oo.dispatchPercentage}%)</div><div>${fmtMoney(s.deductions.dispatchFee)}</div></div>
+      <div class="row-item"><div class="t1">ELD/Tech Fee</div><div>${fmtMoney(s.deductions.eldFee)}</div></div>
+      <div class="row-item"><div class="t1">Trailer Rental</div><div>${fmtMoney(s.deductions.trailerRental)}</div></div>
+      <div class="row-item"><div class="t1">Maintenance Pool</div><div>${fmtMoney(s.deductions.maintenance)}</div></div>
+      <div class="row-item" style="border-bottom:2px solid var(--border);"><div class="t1">Fuel Advance</div><div>${fmtMoney(s.deductions.fuelAdvance)}</div></div>
+      <div class="row-item" style="font-weight:700;color:var(--danger);"><div class="t1">TOTAL DEDUCTIONS</div><div>${fmtMoney(s.deductions.totalDeductions)}</div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="background:var(--panel2);padding:24px;border-radius:12px;margin-top:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;text-align:center;">
+      <div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:8px;">Subtotal (After Deductions)</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);">${fmtMoney(s.grossRevenue - s.deductions.totalDeductions)}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:8px;">Ownership Split (${oo.ownerShare}%)</div>
+        <div style="font-size:18px;font-weight:600;color:var(--text);">Driver: ${oo.ownerShare}%</div>
+        <div style="font-size:14px;color:var(--dim);">Company: ${100-oo.ownerShare}%</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:8px;">NET SETTLEMENT</div>
+        <div style="font-size:32px;font-weight:700;color:var(--accent2);">${fmtMoney(s.netSettlement)}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+      ${currentUser && (currentUser.role === 'owner_admin' || currentUser.role === 'accounting') ?
+        (s.status === 'pending' ? `
+          <button class="btn" onclick="approveOwnerOpSettlement('${s.id}')">✓ Approve</button>
+          <button class="btn secondary" onclick="deleteSettlement('${s.id}')">🗑️ Delete</button>
+        ` : s.status === 'approved' ? `
+          <button class="btn" onclick="markOwnerOpSettlementPaid('${s.id}')">💰 Mark as Paid</button>
+          <button class="btn secondary" onclick="deleteSettlement('${s.id}')">🗑️ Delete</button>
+        ` : `
+          <span class="pill" style="background:#1B3B27;color:#5FE39A;padding:8px 16px;">✓ Paid on ${fmtDateOnly(s.paidAt)}</span>
+          <button class="btn secondary" onclick="deleteSettlement('${s.id}')">🗑️ Delete</button>
+        `)
+        : (s.status === 'paid' ? '<span class="pill" style="background:#1B3B27;color:#5FE39A;padding:8px 16px;">✓ Paid on '+fmtDateOnly(s.paidAt)+'</span>' : '')
+      }
+    </div>
+  </div>
+  `;
+}
+
+function deleteSettlement(settlementId){
+  if(!confirm('Are you sure you want to delete this settlement? This action cannot be undone.')) return;
+  const idx = DB.ownerOperatorSettlements.findIndex(s=>s.id===settlementId);
+  if(idx > -1) {
+    DB.ownerOperatorSettlements.splice(idx, 1);
+    saveDB();
+    alert('Settlement deleted successfully');
+    window.accountingTab = 'settlements';
+    renderAccounting(document.getElementById('main'));
+  }
+}
+
+function generateSettlement(){
+  const ooList = DB.ownerOperators.filter(o=>o.status==='active');
+  if(ooList.length === 0) { alert('No active owner-operators found'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay open';
+  overlay.innerHTML = `
+  <div class="modal modal-wrap" style="max-width:600px;">
+    <button class="close-x" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Generate Settlement</h2>
+    <div class="modal-sub">Settlement auto-populates completed loads from selected period</div>
+    <div class="form-grid">
+      <div class="field"><label>Settlement Period Start Date</label><input type="date" id="settlementStart" required onchange="updateSettlementLoads()"></div>
+      <div class="field"><label>Settlement Period End Date</label><input type="date" id="settlementEnd" required onchange="updateSettlementLoads()"></div>
+      <div class="field span2"><label>Owner-Operator</label><select id="settlementOO" required onchange="updateSettlementLoads()"><option value="">-- Select Owner-Operator --</option>${ooList.map(o=>`<option value="${o.id}">${o.name} (${o.companyName})</option>`).join('')}</select></div>
+      <div class="field span2"><label style="color:var(--dim);">Completed Loads in Period</label><div id="settlementLoadsList" style="border:1px solid var(--border);border-radius:6px;padding:10px;max-height:150px;overflow-y:auto;min-height:50px;"><div style="color:var(--dim);font-size:12px;">Select dates and O/O to see loads</div></div></div>
+      <div class="field span2"><label>Gross Revenue ($) - Auto-calculated</label><input type="number" id="settlementRevenue" readonly style="background:var(--panel2);"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="this.closest('.overlay').remove()">Cancel</button>
+      <button class="btn" onclick="submitSettlement()">Create Settlement</button>
+    </div>
+  </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function updateSettlementLoads(){
+  const startDate = document.getElementById('settlementStart').value;
+  const endDate = document.getElementById('settlementEnd').value;
+  const ooId = document.getElementById('settlementOO').value;
+
+  if(!startDate || !endDate || !ooId) {
+    document.getElementById('settlementLoadsList').innerHTML = '<div style="color:var(--dim);font-size:12px;">Select all fields to see loads</div>';
+    document.getElementById('settlementRevenue').value = '';
+    return;
+  }
+
+  const oo = DB.ownerOperators.find(o=>o.id===ooId);
+  const matchedLoads = DB.loads.filter(l=> l.driverId === oo.driverId && l.status === 'delivered' && new Date(l.deliveryAt) >= new Date(startDate) && new Date(l.deliveryAt) <= new Date(endDate));
+
+  if(matchedLoads.length === 0) {
+    document.getElementById('settlementLoadsList').innerHTML = '<div style="color:var(--dim);font-size:12px;">No completed loads in this period</div>';
+    document.getElementById('settlementRevenue').value = '0.00';
+    return;
+  }
+
+  const totalRevenue = matchedLoads.reduce((sum, l)=> sum + l.rate + l.detention + l.layover + l.tonu, 0);
+  document.getElementById('settlementRevenue').value = totalRevenue.toFixed(2);
+
+  document.getElementById('settlementLoadsList').innerHTML = matchedLoads.map(l=> `<div style="padding:6px;border-bottom:1px solid var(--border);font-size:12px;"><strong>${l.id}</strong> ${l.pickupLoc}→${l.deliveryLoc} <span style="color:var(--accent);">$${(l.rate + l.detention + l.layover + l.tonu).toFixed(2)}</span></div>`).join('');
+
+  document.getElementById('settlementRevenue').dataset.loadIds = JSON.stringify(matchedLoads.map(l=>l.id));
+}
+
+function submitSettlement(){
+  const startDate = document.getElementById('settlementStart').value;
+  const endDate = document.getElementById('settlementEnd').value;
+  const ooId = document.getElementById('settlementOO').value;
+  const revenue = parseFloat(document.getElementById('settlementRevenue').value);
+  const loadIdsJson = document.getElementById('settlementRevenue').dataset.loadIds;
+  const loadIds = loadIdsJson ? JSON.parse(loadIdsJson) : [];
+
+  if(!startDate || !endDate || !ooId || isNaN(revenue)) {
+    alert('Please fill in all fields');
+    return;
+  }
+
+  if(loadIds.length === 0) {
+    alert('No completed loads found in the selected period');
+    return;
+  }
+
+  const oo = DB.ownerOperators.find(o=>o.id===ooId);
+  if(!oo) { alert('Owner-Operator not found'); return; }
+
+  // Calculate deductions based on owner-operator agreement
+  const dispatchFee = revenue * (oo.dispatchPercentage / 100);
+  const totalDeductions = oo.insuranceDeduction + dispatchFee + oo.eldMonthlyFee + oo.trailerRentalMonthly + oo.maintenancePool;
+  const ownerShare = revenue * (oo.ownerShare / 100);
+  const netSettlement = ownerShare - (totalDeductions * (oo.ownerShare / 100));
+
+  const newSettlement = {
+    id: 'settlement_' + Date.now(),
+    ownerOperatorId: ooId,
+    settlementPeriod: { startDate, endDate },
+    loadIds: loadIds,
+    grossRevenue: parseFloat(revenue.toFixed(2)),
+    creditsBreakdown: { loadRevenue: revenue, accessorials: 0, bonuses: 0, reimbursements: 0 },
+    deductions: {
+      insurance: oo.insuranceDeduction,
+      dispatchFee: parseFloat(dispatchFee.toFixed(2)),
+      eldFee: oo.eldMonthlyFee,
+      trailerRental: oo.trailerRentalMonthly,
+      maintenance: oo.maintenancePool,
+      fuelAdvance: 0,
+      otherDeductions: 0,
+      totalDeductions: parseFloat(totalDeductions.toFixed(2))
+    },
+    ownershipSplit: { percentage: oo.ownerShare, ownerShare: parseFloat(ownerShare.toFixed(2)), companyShare: parseFloat((revenue - ownerShare).toFixed(2)) },
+    netSettlement: parseFloat(netSettlement.toFixed(2)),
+    status: 'pending',
+    createdBy: currentUser.id,
+    createdAt: new Date().toISOString()
+  };
+
+  DB.ownerOperatorSettlements.push(newSettlement);
+  saveDB();
+  document.querySelector('.modal').remove();
+  alert('Settlement created successfully');
+  window.accountingTab = 'settlements';
+  renderAccounting(document.getElementById('main'));
+}
+
+function openOwnerOpModal(id){
+  const o = id ? DB.ownerOperators.find(x=>x.id===id) : null;
+  openEntityModal(o?'Edit Owner-Operator':'Add Owner-Operator', o?'Update compensation and fees':'Create new 1099 owner-operator', [
+    {id:'name',label:'Full Name',span2:true},
+    {id:'truckNumber',label:'Truck Number'},
+    {id:'ownerShare',label:'Owner Share (%)',type:'number'},
+    {id:'insuranceDeduction',label:'Monthly Insurance ($)',type:'number'},
+    {id:'dispatchPercentage',label:'Dispatch Fee (%)',type:'number'},
+    {id:'eldMonthlyFee',label:'ELD Monthly Fee ($)',type:'number'},
+    {id:'trailerRentalMonthly',label:'Trailer Rental Monthly ($)',type:'number'},
+    {id:'maintenancePool',label:'Maintenance Pool Monthly ($)',type:'number'},
+    {id:'status',label:'Status',type:'select',options:[{value:'active',label:'Active'},{value:'on_hold',label:'On Hold'},{value:'inactive',label:'Inactive'}]},
+  ], o||{ownerShare:88,status:'active'}, ()=>{
+    const g=k=>document.getElementById('ent_'+k).value;
+    const data={name:g('name'),truckNumber:g('truckNumber'),ownerShare:parseInt(g('ownerShare'))||88,insuranceDeduction:parseFloat(g('insuranceDeduction'))||0,dispatchPercentage:parseFloat(g('dispatchPercentage'))||0,eldMonthlyFee:parseFloat(g('eldMonthlyFee'))||0,trailerRentalMonthly:parseFloat(g('trailerRentalMonthly'))||0,maintenancePool:parseFloat(g('maintenancePool'))||0,status:g('status')};
+    if(o) Object.assign(o,data); else DB.ownerOperators.push({id:'oo_'+Date.now(),...data});
+    saveDB(); window.accountingTab='settlements'; renderAccounting(document.getElementById('main'));
+    alert('✓ Owner-Op '+(o?'updated':'added'));
   });
 }
-function markSettlementPaid(id){
-  const s = DB.settlements.find(x=>x.id===id); s.status='paid'; s.paidAt=new Date().toISOString();
-  saveDB(); renderPayroll(document.getElementById('main'));
+
+function approveOwnerOpSettlement(settlementId){
+  const s = DB.ownerOperatorSettlements.find(x=>x.id===settlementId);
+  s.status='approved'; s.approvedBy=currentUser.name; s.approvedAt=new Date().toISOString();
+  saveDB(); window.accountingTab='settlements'; renderAccounting(document.getElementById('main'));
+  alert('✓ Settlement approved and ready to pay');
 }
-function openPayStub(id){
-  const s = DB.settlements.find(x=>x.id===id);
-  const d = DB.drivers.find(x=>x.id===s.driverId);
-  const loads = s.loadIds.map(lid=>DB.loads.find(l=>l.id===lid)).filter(Boolean);
-  document.getElementById('stubBody').innerHTML = `
-    <h2 style="margin-bottom:2px;">Drive Mode Logistics</h2>
-    <div class="modal-sub">Pay Statement — ${d.name} (${d.classification==='w2_employee'?'W-2 Employee':'1099 Owner-Operator'})</div>
-    <div class="row-item"><div class="t1">Period</div><div>${fmtDateOnly(s.periodStart)} – ${fmtDateOnly(s.periodEnd)}</div></div>
-    <div class="section-divider" style="margin-top:16px;">Loads Included</div>
-    ${loads.map(l=>`<div class="row-item"><div><div class="t1">${l.id}</div><div class="t2">${l.pickupLoc} → ${l.deliveryLoc} · ${l.miles} mi</div></div><div>${fmtMoney(payForLoad(d,l)+l.detention+l.layover)}</div></div>`).join('')}
-    <div class="section-divider">Summary</div>
-    <div class="row-item"><div class="t1">Gross Pay</div><div>${fmtMoney(s.gross)}</div></div>
-    <div class="row-item"><div class="t1">Tax Withholding</div><div>-${fmtMoney(s.taxWithholding||0)}</div></div>
-    <div class="row-item"><div class="t1">Other Deductions</div><div>-${fmtMoney(s.deductions)}</div></div>
-    <div class="row-item" style="font-size:16px;"><div class="t1">Net Pay</div><b>${fmtMoney(s.net)}</b></div>
-    <div class="row-item"><div class="t1">Status</div>${pillColor(...SETTLED_STATUS_COLOR[s.status], s.status)}</div>
-  `;
-  document.getElementById('stubOverlay').classList.add('open');
+
+function markOwnerOpSettlementPaid(settlementId){
+  const s = DB.ownerOperatorSettlements.find(x=>x.id===settlementId);
+  s.status='paid'; s.paidAt=new Date().toISOString();
+  saveDB(); window.accountingTab='settlements'; renderAccounting(document.getElementById('main'));
+  alert('✓ Settlement marked as paid (ACH transfer)');
 }
-function closeStub(){ document.getElementById('stubOverlay').classList.remove('open'); }
+
+/* ---------- EMPLOYEES ---------- */
+/* ---------- DOCUMENTS ---------- */
+function renderDocuments(main){
+  // Categorize document types
+  const docCategories = {
+    POD: { label:'Proof of Delivery', color:'#2E5C3E', icon:'✓' },
+    BOL: { label:'Bill of Lading', color:'#3D4A6B', icon:'📋' },
+    INSURANCE: { label:'Insurance & Compliance', color:'#5C3D2E', icon:'🛡️' }
+  };
+
+  // Function to determine doc category
+  function getDocCategory(type){
+    const t = type.toLowerCase();
+    if(t.includes('pod') || t.includes('proof') || t.includes('delivery') || t.includes('signature')) return 'POD';
+    if(t.includes('bol') || t.includes('bill of lading') || t.includes('shipping')) return 'BOL';
+    if(t.includes('insurance') || t.includes('cdl') || t.includes('medical') || t.includes('registration')) return 'INSURANCE';
+    return 'BOL'; // default
+  }
+
+  const docs = {POD:[], BOL:[], INSURANCE:[]};
+
+  // Collect load documents
+  DB.loads.forEach(l=>{
+    Object.entries(l.docs).forEach(([type,file])=>{
+      if(file){
+        const cat = getDocCategory(type);
+        docs[cat].push({type, related:l.id, file, docClass:'Load'});
+      }
+    });
+  });
+
+  // Collect driver documents
+  DB.drivers.forEach(d=>{
+    docs.INSURANCE.push({type:'CDL', related:d.name, file:d.cdl||'On file', docClass:'Driver'});
+    docs.INSURANCE.push({type:'Medical Card', related:d.name, file:'expires '+fmtDateOnly(d.medExp), docClass:'Driver'});
+  });
+
+  // Collect truck documents
+  DB.trucks.forEach(t=>{
+    docs.BOL.push({type:'Registration', related:t.unit, file:'expires '+fmtDateOnly(t.regExp), docClass:'Fleet'});
+    docs.INSURANCE.push({type:'Insurance', related:t.unit, file:'expires '+fmtDateOnly(t.insExp), docClass:'Fleet'});
+  });
+
+  // Build HTML with categorized sections
+  let html = '<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate(\'dashboard\')">← Back to Dashboard</button><h1>Document Center</h1><div class="desc">All company documents organized by category</div></div></div>';
+
+  Object.entries(docCategories).forEach(([key, cat])=>{
+    const items = docs[key]||[];
+    html += `
+    <div class="panel">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <span style="font-size:20px;">${cat.icon}</span>
+        <h3 style="margin:0;color:${cat.color};">${cat.label}</h3>
+        <span style="margin-left:auto;background:var(--panel2);padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600;">${items.length} doc(s)</span>
+      </div>
+      ${items.length?
+        `<div class="table-wrap" style="border:none;"><table><thead><tr><th>Document Type</th><th>Related To</th><th style="font-size:12px;color:var(--dim);">Class</th><th>File / Detail</th>${currentUser && currentUser.role === 'owner_admin' ? '<th></th>' : ''}</tr></thead>
+        <tbody>${items.map(d=>`<tr><td><b>${d.type}</b></td><td>${d.related}</td><td style="font-size:12px;color:var(--dim);">${d.docClass}</td><td class="mono" style="font-size:12px;">${d.file}</td>${currentUser && currentUser.role === 'owner_admin' ? '<td style="text-align:center;"><button class="btn small secondary" style="color:var(--danger);padding:4px 8px;font-size:11px;" onclick="deleteDocument(\''+d.docClass+'\',\''+d.related+'\',\''+d.type+'\')">Delete</button></td>' : ''}</tr>`).join('')}</tbody></table></div>`
+        :`<div style="padding:24px;text-align:center;color:var(--dim);background:var(--panel2);border-radius:8px;font-size:14px;">No documents yet</div>`}
+    </div>`;
+  });
+
+  main.innerHTML = html;
+}
+
+function deleteDocument(docClass, related, docType){
+  if(!confirm(`Delete ${docType} for ${related}?\n\nThis action cannot be undone.`)) return;
+
+  if(docClass === 'Load'){
+    const load = DB.loads.find(l => l.id === related);
+    if(load){
+      const docKey = docType.toLowerCase().replace(/\s+/g, '_');
+      if(docKey === 'rate_confirmation') delete load.docs.ratecon;
+      else if(docKey === 'bol') delete load.docs.bol;
+      else if(docKey === 'pod') delete load.docs.pod;
+    }
+  }
+
+  saveDB();
+  renderDocuments(document.getElementById('main'));
+  alert('✓ Document deleted');
+}
 
 /* ---------- USER MANAGEMENT ---------- */
 function renderUsers(main){
-  main.innerHTML = `<div class="topbar"><div><h1>User Management</h1><div class="desc">Create accounts, manage roles and permissions</div></div>
+  main.innerHTML = `<div class="topbar"><div><button class="btn secondary" style="padding:6px 12px;font-size:14px;margin-right:12px;" onclick="navigate('dashboard')">← Back to Dashboard</button><h1>User Management</h1><div class="desc">Create accounts, manage roles and permissions</div></div>
   <button class="btn" onclick="openCreateUserModal()">+ New User</button></div>
   <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
   <tbody>${DB.users.map(u=>`<tr><td>${u.name}</td><td>${u.email}</td><td><span class="pill" style="background:var(--panel2);color:var(--text)">${u.role.replace('_',' / ')}</span></td>
